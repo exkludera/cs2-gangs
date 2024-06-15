@@ -1,3 +1,17 @@
+> [!CAUTION]
+> FORK FROM [baferpro/Guild](https://github.com/baferpro/Guild)
+
+> [!NOTE]
+> * renamed everything to gangs instead of guilds
+> * removed modes, supports [cs2-store](https://github.com/schwarper/cs2-store)
+> * more skills: gravity, speed & armor
+> * added the prefix in lang on all chat messages
+> * fixed missing localizer for disband, missing brackets in lang, wrong localizer on skills menu
+> * cleaned up code and removed unnecessary stuff
+
+## old readme from main below
+--------------------------------------------
+
 # Guild
 **Guild (Gangs/Guildings/Clans)** - is a plugin that allows players to create their own internal "group of interests" on the server, invite the rest of the players to it and further develop in all sorts of ways.
 
