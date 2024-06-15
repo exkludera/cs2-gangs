@@ -59,8 +59,6 @@ public class GangsSpeed : BasePlugin, IPluginConfig<SpeedConfig>
     {
         if (@event.Userid!.Handle == IntPtr.Zero || @event.Userid.UserId == null)
             return HookResult.Continue;
-
-        Server.PrintToChatAll("test");
         
         var player = @event.Userid;
         if (player == null || _api == null) return HookResult.Continue;
