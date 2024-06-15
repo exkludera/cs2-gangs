@@ -5,7 +5,8 @@
 > * renamed everything to gangs instead of guilds
 > * removed modes, supports [cs2-store](https://github.com/schwarper/cs2-store)
 > * more skills: gravity, speed & armor
-> * added the prefix in lang on all chat messages
+> * added the prefix from lang on chat messages
+> * changed messages lang key to: chat< > instead of menu< >
 > * fixed missing localizer for disband, missing brackets in lang, wrong localizer on skills menu
 > * cleaned up code and removed unnecessary stuff
 
