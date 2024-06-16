@@ -33,7 +33,7 @@ public partial class Gangs
                         {
                             await connection.OpenAsync();
                             await connection.QueryAsync(@"
-                                UPDATE gang_group SET exp = @exp WHERE id = @id", 
+                                UPDATE `gang_group` SET `exp` = @exp WHERE `id` = @id", 
                                 new { exp = gang.Exp,
                                     id = gang.DatabaseID});
                         }
@@ -74,7 +74,7 @@ public partial class Gangs
                 {
                     await connection.OpenAsync();
                     var command = connection.CreateCommand();
-                    string sql = $"SELECT player_table.* FROM `gang_player` AS `player_table` INNER JOIN `gang_group` AS `gang_table` ON player_table.gang_id = gang_table.id WHERE player_table.steam_id = '{steamid}' AND gang_table.server_id = {Config.ServerId};";
+                    string sql = $"SELECT player_table.* FROM gang_player AS player_table INNER JOIN gang_group AS gang_table ON player_table.gang_id = gang_table.id WHERE player_table.steam_id = '{steamid}' AND gang_table.server_id = {Config.ServerId};";
                     command.CommandText = sql;
                     var reader = await command.ExecuteReaderAsync();
                     if(await reader.ReadAsync())
@@ -175,7 +175,7 @@ public partial class Gangs
                         await connection.OpenAsync();
         
                         var command = connection.CreateCommand();
-                        string sql = $"SELECT `name` FROM `gang_group` WHERE name = '{message}' AND server_id = {Config.ServerId}";
+                        string sql = $"SELECT `name` FROM `gang_group` WHERE `name` = '{message}' AND `server_id` = {Config.ServerId}";
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
                         if (await reader.ReadAsync() == false)
@@ -185,7 +185,7 @@ public partial class Gangs
                             {
                                 sql = $"INSERT INTO `gang_group` (`name`, `server_id`, `create_date`, `end_date`) VALUES ('{message}', {Config.ServerId}, {createDate}, {endDate});";
                                 await connection.ExecuteAsync(sql);
-                                sql = $"SELECT `id` FROM `gang_group` WHERE name = '{message}' AND server_id = {Config.ServerId}";
+                                sql = $"SELECT `id` FROM `gang_group` WHERE `name` = '{message}' AND `server_id` = {Config.ServerId}";
                                 command.CommandText = sql;
                                 var reader2 = await command.ExecuteReaderAsync();
                                 if (await reader2.ReadAsync())
@@ -284,7 +284,7 @@ public partial class Gangs
                 {
                     await connection.OpenAsync();
                     var command = connection.CreateCommand();
-                    string sql = $"SELECT `name`, `create_date`, `end_date`, `exp`, `id` FROM `gang_group` WHERE server_id = {Config.ServerId};";
+                    string sql = $"SELECT `name`, `create_date`, `end_date`, `exp`, `id` FROM `gang_group` WHERE `server_id` = {Config.ServerId};";
                     command.CommandText = sql;
                     var reader = await command.ExecuteReaderAsync();
                     while(await reader.ReadAsync())

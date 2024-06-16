@@ -72,8 +72,8 @@ public class GangsHP : BasePlugin, IPluginConfig<HPConfig>
 
         if (healthValue <= 0 || playerPawn == null) return HookResult.Continue;
         AddTimer(0.1f, ()=>{
-            playerPawn.Health = 100 + healthValue;
-            playerPawn.MaxHealth = 100 + healthValue;
+            playerPawn.Health += healthValue;
+            playerPawn.MaxHealth += healthValue;
             Utilities.SetStateChanged(playerPawn, "CBaseEntity", "m_iHealth");
         });
         return HookResult.Continue;
@@ -84,7 +84,7 @@ public class HPConfig : BasePluginConfig
     [JsonPropertyName("MaxLevel")]
     public int MaxLevel { get; set; } = 10;
     [JsonPropertyName("Price")]
-    public int Price { get; set; } = 500;
+    public int Price { get; set; } = 250;
     [JsonPropertyName("Value")]
     public int Value { get; set; } = 2;
 }

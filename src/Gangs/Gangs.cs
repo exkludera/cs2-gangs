@@ -197,7 +197,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                             {
                                                 await connection.OpenAsync();
                                                 skill.Level += 1;
-                                                await connection.ExecuteAsync($"UPDATE `gang_perk` SET {skill.Name} = {skill.Level} WHERE `gang_id` = {gang.DatabaseID};");
+                                                await connection.ExecuteAsync($"UPDATE `gang_perk` SET `{skill.Name}` = {skill.Level} WHERE `gang_id` = {gang.DatabaseID};");
 
                                                 Server.NextFrame(() => {
                                                     StoreApi.GivePlayerCredits(player, -skill.Price);
@@ -421,7 +421,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                     {
                                         var addDay = Helper.ConvertUnixToDateTime(gang.EndDate).AddDays(Convert.ToInt32(price.Day));
                                         var newDate = (int)(addDay.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-                                        await connection.ExecuteAsync($"UPDATE `gang_group` SET `end_date` = {newDate} WHERE `id` = '{gang.DatabaseID}'");
+                                        await connection.ExecuteAsync($"UPDATE `gang_group` SET `end_date` = {newDate} WHERE `id` = {gang.DatabaseID}");
                                         gang.EndDate = newDate;
                                         Server.NextFrame(() => {
                                             StoreApi.GivePlayerCredits(player, -price.Value);
@@ -499,8 +499,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                             {
                                                 await connection.OpenAsync();
 
-                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `rank` = 0 WHERE `id` = '{user.Key}'");
-                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `rank` = 1 WHERE `id` = '{userInfo[player.Slot].DatabaseID}'");
+                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `rank` = 0 WHERE `id` = {user.Key}");
+                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `rank` = 1 WHERE `id` = {userInfo[player.Slot].DatabaseID}");
 
                                                 userInfo[player.Slot].Rank = 1;
                                                 Server.NextFrame(() => {
@@ -561,20 +561,11 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                             {
                                 await connection.OpenAsync();
 
-                                await connection.ExecuteAsync(@"
-                                        DELETE FROM gang_player
-                                        WHERE gang_id = @gId;", 
-                                        new{ gId = gang.DatabaseID });
+                                await connection.ExecuteAsync(@"DELETE FROM `gang_player` WHERE `gang_id` = @gId;", new{ gId = gang.DatabaseID });
 
-                                await connection.ExecuteAsync(@"
-                                        DELETE FROM gang_perk
-                                        WHERE gang_id = @gId;", 
-                                        new{ gId = gang.DatabaseID });
+                                await connection.ExecuteAsync(@"DELETE FROM `gang_perk` WHERE `gang_id` = @gId;", new{ gId = gang.DatabaseID });
                                         
-                                await connection.ExecuteAsync(@"
-                                        DELETE FROM gang_group
-                                        WHERE id = @gId AND server_id = @sId;", 
-                                        new{ gId = gang.DatabaseID, sId = Config.ServerId });
+                                await connection.ExecuteAsync(@"DELETE FROM `gang_group` WHERE `id` = @gId AND `server_id` = @sId;", new{ gId = gang.DatabaseID, sId = Config.ServerId });
 
                                 Server.NextFrame(() => {
                                     Server.PrintToChatAll($" {Localizer["Prefix"]} {Localizer["chat<disband_announce>", player.PlayerName, gang.Name]}");
@@ -622,14 +613,15 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 await using (var connection = new MySqlConnection(dbConnectionString))
                 {
                     await connection.OpenAsync();
+
                     var countmembers = await connection.QueryAsync(@"
-                        SELECT COUNT(*) as Count FROM gang_player WHERE gang_id = @gangid", 
+                        SELECT COUNT(*) as Count FROM `gang_player` WHERE `gang_id` = @gangid", 
                         new { gangid = gang.DatabaseID });
                         var data = (IDictionary<string,object>)countmembers.First();
                         var count = data["Count"];
 
                     var owner = await connection.QueryAsync(@"
-                        SELECT name FROM gang_player WHERE gang_id = @gangid AND rank = 0", 
+                        SELECT `name` FROM `gang_player` WHERE `gang_id` = @gangid AND `rank` = 0", 
                         new { gangid = gang.DatabaseID });
                         data = (IDictionary<string,object>)owner.First();
                         var name = data["name"];
@@ -674,14 +666,14 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 await connection.OpenAsync();
                 foreach(var gang in GangList)
                 {
-                    try{
+                    try
+                    {
                         string sql = $"SELECT `{SkillName}` FROM `gang_perk` WHERE `gang_id` = '{gang.DatabaseID}';";
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
-                        if(await reader.ReadAsync()) {
+                        if(await reader.ReadAsync())
                             gang.SkillList.Add(new Skill( SkillName, reader.GetInt32(0), maxLevel, price));
-                        }
                     }
                     catch (Exception ex)
                     {
@@ -717,7 +709,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
             await using (var connection = new MySqlConnection(dbConnectionString))
             {
                 await connection.OpenAsync();
-                try{
+                try
+                {
                     var gang = GangList.Find(x=>x.DatabaseID == GangID);
                     if(gang != null)
                     {
@@ -725,9 +718,9 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
-                        if(await reader.ReadAsync()) {
+
+                        if(await reader.ReadAsync())
                             gang.SkillList.Add(new Skill( SkillName, reader.GetInt32(0), maxLevel, price));
-                        }
                     }
                 }
                 catch (Exception ex)
@@ -769,7 +762,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     await connection.OpenAsync();
 
                     var countmembers = await connection.QueryAsync(@"
-                        SELECT COUNT(*) as Count FROM gang_player WHERE gang_id = @gangid", 
+                        SELECT COUNT(*) as Count FROM `gang_player` WHERE `gang_id` = @gangid", 
                         new { gangid = gang_id });
                         var data = (IDictionary<string,object>)countmembers.First();
                         var count = data["Count"];
@@ -794,8 +787,12 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
     }
     public bool NeedExtendGang(Gang gang)
     {
-        if (gang == null) return true;
-        if (Config.CreateCost.Days == 0) return false;
+        if (gang == null)
+            return true;
+
+        if (Config.CreateCost.Days == 0)
+            return false;
+
         return gang.EndDate < Helper.GetNowUnixTime();
     }
 }

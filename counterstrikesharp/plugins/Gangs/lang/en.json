@@ -20,14 +20,17 @@
     "menu<statistic_leader>": "Leader: {0}",
 
     "menu<skills>": "Skills",
-    "size": "Gang size",
+    "size": "Gang slots",
     "hp": "Health",
+    "armor": "Armor",
+    "speed": "Speed",
+    "gravity": "Gravity",
 
     "menu<skill_info>": "{0} [{1}/{2}] ({3} credits)",
-    "chat<skill_success_buy>": "{green}Successfully purchased {red}{0} ",
-    "chat<skill_max_lvl>": "{red}You reached the maximum skill level",
+    "chat<skill_success_buy>": "{green}Successfully upgraded {red}{0} ",
+    "chat<skill_max_lvl>": "{red}Gang already have the highest skill level",
 
-    "menu<admin_panel>": "Leader panel",
+    "menu<admin_panel>": "Leader settings",
     "menu<invite>": "Invite to gang",
     "chat<invite_sent>": "Invite has been sent to {lightpurple}{0}",
     "menu<invite_came>": "Invite to gang from {0}",

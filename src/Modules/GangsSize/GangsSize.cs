@@ -58,7 +58,7 @@ public class SizeConfig : BasePluginConfig
     [JsonPropertyName("MaxLevel")]
     public int MaxLevel { get; set; } = 10;
     [JsonPropertyName("Price")]
-    public int Price { get; set; } = 500;
+    public int Price { get; set; } = 250;
 }
 internal class Helper
 {
