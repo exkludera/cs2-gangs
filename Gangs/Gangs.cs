@@ -13,7 +13,7 @@ namespace Gangs;
 public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 {
     public override string ModuleName => "Gangs";
-    public override string ModuleVersion => "1.1";
+    public override string ModuleVersion => "0.1.1";
     public override string ModuleAuthor => "Faust, modified by exkludera";
 
     public GangsConfig Config {get; set; } = new();
@@ -61,14 +61,19 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         RegisterEventHandler<EventPlayerDeath>((@event, info) =>
         {
             var player = @event.Attacker;
+
             if(player == null || !player.IsValid || player.IsBot || player == @event.Userid) 
                 return HookResult.Continue;
             
             var slot = player.Slot;
 
             var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
-            if(gang == null) return HookResult.Continue;
-            if(NeedExtendGang(gang)) return HookResult.Continue;
+
+            if(gang == null)
+                return HookResult.Continue;
+
+            if(NeedExtendGang(gang))
+                return HookResult.Continue;
             
             gang.Exp += 1;
             
@@ -81,18 +86,15 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         }
         catch (Exception ex)
         {
-            Logger.LogError("{OnAllPluginsLoaded} Fail load another api! | " + ex.Message);
-            Logger.LogDebug(ex.Message);
-            throw new Exception("[Gangs] Fail load another api! | " + ex.Message);
+            Logger.LogError("{OnAllPluginsLoaded} Fail load StoreApi! | " + ex.Message);
+            throw new Exception("[Gangs] Fail load StoreApi! | " + ex.Message);
         }
     }
 
     public void OnConfigParsed(GangsConfig config)
     {
 		if (config.DatabaseHost.Length < 1 || config.DatabaseName.Length < 1 || config.DatabaseUser.Length < 1)
-		{
 			throw new Exception("[CS2-Gangs] You need to setup Database info in config!");
-		}
 
         GangList.Clear();
 
@@ -114,35 +116,41 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 await using (var connection = new MySqlConnection(dbConnectionString))
                 {
                     connection.Open();
-                    string sql = @"CREATE TABLE IF NOT EXISTS `gang_group` (
-                                    `id` int(20) NOT NULL AUTO_INCREMENT,
-                                    `name` varchar(32) NOT NULL,
-                                    `exp` int(32) NOT NULL DEFAULT 0,
-                                    `server_id` int(16) NOT NULL DEFAULT 0,
-                                    `create_date` int(32) NOT NULL,
-                                    `end_date` int(32) NOT NULL,
-                                    PRIMARY KEY (id)) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+                    string sql = @"
+                    CREATE TABLE IF NOT EXISTS `gang_group` (
+                        `id` int(20) NOT NULL AUTO_INCREMENT,
+                        `name` varchar(32) NOT NULL,
+                        `exp` int(32) NOT NULL DEFAULT 0,
+                        `server_id` int(16) NOT NULL DEFAULT 0,
+                        `create_date` int(32) NOT NULL,
+                        `end_date` int(32) NOT NULL,
+                    PRIMARY KEY (id)
+                    ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
 
                     await connection.ExecuteAsync(sql);
 
-                    sql = @"CREATE TABLE IF NOT EXISTS `gang_player` (
-					        `id` int(20) NOT NULL AUTO_INCREMENT,
-                            `gang_id` int(20) NOT NULL,
-                            `steam_id` varchar(32) NOT NULL,
-                            `name` varchar(32) NOT NULL,
-                            `rank` int(16) NOT NULL,
-                            `inviter_name` varchar(32) NULL DEFAULT NULL,
-                            `invite_date` int(32) NOT NULL,
-                            FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
-                            PRIMARY KEY (id)) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+                    sql = @"
+                    CREATE TABLE IF NOT EXISTS `gang_player` (
+					    `id` int(20) NOT NULL AUTO_INCREMENT,
+                        `gang_id` int(20) NOT NULL,
+                        `steam_id` varchar(32) NOT NULL,
+                        `name` varchar(32) NOT NULL,
+                        `gang_hierarchy` int(16) NOT NULL,
+                        `inviter_name` varchar(32) NULL DEFAULT NULL,
+                        `invite_date` int(32) NOT NULL,
+                    FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
+                    PRIMARY KEY (id)
+                    ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
 
                     await connection.ExecuteAsync(sql);
 
-                    sql = @"CREATE TABLE IF NOT EXISTS `gang_perk` (
-                            `id` int(20) NOT NULL AUTO_INCREMENT,
-                            `gang_id` int(20) NOT NULL,
-                            FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
-                            PRIMARY KEY (id)) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+                    sql = @"
+                    CREATE TABLE IF NOT EXISTS `gang_perk` (
+                        `id` int(20) NOT NULL AUTO_INCREMENT,
+                        `gang_id` int(20) NOT NULL,
+                    FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
+                    PRIMARY KEY (id)
+                    ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
 
                     await connection.ExecuteAsync(sql);
                 }
@@ -150,7 +158,6 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 			catch (Exception ex)
 			{
                 Logger.LogError("{OnConfigParsed} Unable to connect to database! | " + ex.Message);
-                Logger.LogDebug(ex.Message);
                 throw new Exception("[Gangs] Unable to connect to Database! | " + ex.Message);
 			}
 		});
@@ -162,30 +169,39 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
     #region Menus
     public void CommandGang(CCSPlayerController? player)
     {
-        if (player == null || !player.IsValid || player.IsBot) return;
+        if (player == null || !player.IsValid || player.IsBot)
+            return;
         
         var slot = player.Slot;
         
         var menu = new ChatMenu(Localizer["menu<title>"]);
+
         if (userInfo[slot].DatabaseID != -1)
         {
             var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
+
             if(gang != null)
             {
                 var days = Helper.ConvertUnixToDateTime(gang.EndDate).Subtract(DateTime.Now).Days;
-                menu.Title = Localizer["menu<title_with_days>", gang.Name, days];
-                menu.AddMenuOption(Localizer["menu<statistic>"], ((player, option) =>
-                {
+
+                if (Config.ExtendCost.Value.Count > 0)
+                    menu.Title = Localizer["menu<title_with_days>", gang.Name, days];
+                else
+                    menu.Title = Localizer["menu<title_with_name>", gang.Name];
+
+                menu.AddMenuOption(Localizer["menu<statistic>"], (player, option) => {
                     OpenStatisticMenu(player, gang);
-                }));
-                menu.AddMenuOption(Localizer["menu<skills>"], ((player, option) =>
+                });
+
+                menu.AddMenuOption(Localizer["menu<skills>"], (player, option) =>
                 {
                     var skillsMenu = new ChatMenu(Localizer["menu<skills>"]);
+
                     foreach (var skill in gang.SkillList)
                     {
                         if (StoreApi != null)
                         {
-                            skillsMenu.AddMenuOption(Localizer["menu<skill_info>", Localizer[skill.Name], skill.Level, skill.MaxLevel, skill.Price], ((player, option) =>
+                            skillsMenu.AddMenuOption(Localizer["menu<skill_info>", Localizer[skill.Name], skill.Level, skill.MaxLevel, skill.Price], (player, option) =>
                             {
                                 Task.Run(async () =>
                                 {
@@ -215,25 +231,24 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                     catch (Exception ex)
                                     {
                                         Logger.LogError("{CommandGang} Fail skill gang! | " + ex.Message);
-                                        Logger.LogDebug(ex.Message);
                                         throw new Exception("[Gangs] Fail skill gang! | " + ex.Message);
                                     }
                                 });
-                            }), StoreApi.GetPlayerCredits(player) < skill.Price || skill.Level >= skill.MaxLevel);
+                            }, StoreApi.GetPlayerCredits(player) < skill.Price || skill.Level >= skill.MaxLevel);
                         }
                     }
+
                     MenuManager.OpenChatMenu(player, skillsMenu);
-                }), NeedExtendGang(gang));
+                }, NeedExtendGang(gang));
 
-                menu.AddMenuOption(Localizer["menu<admin_panel>"], ((player, option) =>
-                {
+                menu.AddMenuOption(Localizer["menu<admin_panel>"], (player, option) => {
                     OpenAdminMenu(player);
-                }), userInfo[slot].Rank == 0 ? false : true);
+                }, userInfo[slot].Rank == 0 ? false : true);
 
-                menu.AddMenuOption(Localizer["menu<leave>"], ((player, option) =>
+                menu.AddMenuOption(Localizer["menu<leave>"], (player, option) =>
                 {
                     var acceptMenu = new ChatMenu(Localizer["menu<leave_accept>"]);
-                    acceptMenu.AddMenuOption(Localizer["Yes"], ((player, option) =>
+                    acceptMenu.AddMenuOption(Localizer["Yes"], (player, option) =>
                     {
                         Task.Run(async () =>
                         {
@@ -259,58 +274,63 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                             catch (Exception ex)
                             {
                                 Logger.LogError("{CommandGang} Fail leave gang! | " + ex.Message);
-                                Logger.LogDebug(ex.Message);
                                 throw new Exception("[Gangs] Fail leave gang! | " + ex.Message);
                             }
                         });
-                    }));
-                    acceptMenu.AddMenuOption(Localizer["No"], ((invited, option) =>
-                    {
+                    });
+                    acceptMenu.AddMenuOption(Localizer["No"], (invited, option) => {
                         MenuManager.OpenChatMenu(player, menu);
-                    }));
-                    MenuManager.OpenChatMenu(player, acceptMenu);    
-                }), userInfo[slot].Rank > 0 ? false : true);
+                    });
 
-                menu.AddMenuOption(Localizer["menu<top>"], ((player, option) =>
+                    MenuManager.OpenChatMenu(player, acceptMenu);    
+                }, userInfo[slot].Rank > 0 ? false : true);
+
+                menu.AddMenuOption(Localizer["menu<top>"], (player, option) =>
                 {
                     var topGangsMenu = new ChatMenu(Localizer["menu<top>"]);
                     var Gangs = from gang in GangList orderby gang.Exp select gang;
+
                     foreach (var gang in Gangs)
                     {
-                        topGangsMenu.AddMenuOption(Localizer["menu<top_info>", gang.Name, GetGangLevel(gang)], ((player, option) =>
+                        topGangsMenu.AddMenuOption(Localizer["menu<top_info>", gang.Name, GetGangLevel(gang)], (player, option) =>
                         {
                             OpenStatisticMenu(player, gang);
-                        }));
+                        });
                     }
+
                     topGangsMenu.ExitButton = true;
+
                     MenuManager.OpenChatMenu(player, topGangsMenu);
-                }));
+                });
             }
         }
+
         else
         {
             if(Config.CreateCost.Value > 0)
             {
                 if(StoreApi != null)
                 {
-                    menu.AddMenuOption(Localizer["menu<create_with_credits>", Config.CreateCost.Value], ((player, option) =>
+                    menu.AddMenuOption(Localizer["menu<create_with_credits>", Config.CreateCost.Value], (player, option) =>
                     {
                         userInfo[slot].Status = 1;
                         player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<create_name>"]}");
-                    }), StoreApi.GetPlayerCredits(player) < Config.CreateCost.Value);
+                    }, StoreApi.GetPlayerCredits(player) < Config.CreateCost.Value);
                 }
             }
             else
             {
-                menu.AddMenuOption(Localizer["menu<create>"], ((player, option) =>
+                menu.AddMenuOption(Localizer["menu<create>"], (player, option) =>
                 {
                     userInfo[slot].Status = 1;
                     player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<create_name>"]}");
-                }));
+                });
             }
         }
+
         if(menu.MenuOptions.Count == 0)
-            menu.AddMenuOption(Localizer["Oops"], ((player, option) =>{}), true);
+            menu.AddMenuOption(Localizer["Oops"], (player, option) => { }, true);
+
         MenuManager.OpenChatMenu(player, menu);
     }
     public void OpenAdminMenu(CCSPlayerController? player)
@@ -320,28 +340,31 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         var slot = player.Slot;
         
         var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
+
         if(gang == null)
             return;
 
         var menu = new ChatMenu(Localizer["menu<title_with_name>", gang.Name]);
         var sizeSkill = gang.SkillList.Find(x=>x.Name.Equals("size"));
-        menu.AddMenuOption(Localizer["menu<invite>"], ((player, option) =>
+
+        menu.AddMenuOption(Localizer["menu<invite>"], (player, option) =>
         {
             var usersMenu = new ChatMenu(Localizer["menu<players>"]);
             
-            foreach (var user in CounterStrikeSharp.API.Utilities.GetPlayers())
+            foreach (var user in Utilities.GetPlayers())
             {
-                if (user == null || !user.IsValid || user.IsBot) continue;
+                if (user == null || !user.IsValid || user.IsBot)
+                    continue;
                 
                 if(userInfo[user.Slot].DatabaseID == -1)
                 {
-                    usersMenu.AddMenuOption($"{user.PlayerName}", ((inviter, option) =>
+                    usersMenu.AddMenuOption($"{user.PlayerName}", (inviter, option) =>
                     {
                         inviter.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<invite_sent>", user.PlayerName]}");
                         var acceptMenu = new ChatMenu(Localizer["menu<invite_came>", gang.Name]);
-                        acceptMenu.AddMenuOption(Localizer["Accept"], ((invited, option) =>
+
+                        acceptMenu.AddMenuOption(Localizer["Accept"], (invited, option) =>
                         {
-                            
                             if(invited.AuthorizedSteamID != null)
                             {
                                 var l_steamId = invited.AuthorizedSteamID.SteamId2;
@@ -355,12 +378,13 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                         await using (var connection = new MySqlConnection(dbConnectionString))
                                         {
                                             await connection.OpenAsync();
-                                            var sql = $"INSERT INTO `gang_player` (`gang_id`, `steam_id`, `name`, `rank`, `inviter_name`, `invite_date`) VALUES ({gang.DatabaseID}, '{l_steamId}', '{l_playerName}', 3, '{l_inviterName}', {l_inviteDate});";
+                                            var sql = $"INSERT INTO `gang_player` (`gang_id`, `steam_id`, `name`, `gang_hierarchy`, `inviter_name`, `invite_date`) VALUES ({gang.DatabaseID}, '{l_steamId}', '{l_playerName}', 3, '{l_inviterName}', {l_inviteDate});";
                                             await connection.ExecuteAsync(sql);
                                             var command = connection.CreateCommand();
                                             sql = $"SELECT `id` FROM `gang_player` WHERE `steam_id` = '{l_steamId}'";
                                             command.CommandText = sql;
                                             var reader = await command.ExecuteReaderAsync();
+
                                             if (await reader.ReadAsync())
                                             {
                                                 userInfo[user.Slot] = new UserInfo
@@ -385,28 +409,31 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                     catch (Exception ex)
                                     {
                                         Logger.LogError("{OpenAdminMenu} Failed invite in database | " + ex.Message);
-                                        Logger.LogDebug(ex.Message);
                                         throw new Exception("[Gangs] Failed invite in database! | " + ex.Message);
                                     }
                                 });
                             }
-                        }));
+                        });
                         acceptMenu.ExitButton = true;
                         MenuManager.OpenChatMenu(user, acceptMenu);
-                    }));
+                    });
                 }
             }
-            if(usersMenu.MenuOptions.Count > 0) MenuManager.OpenChatMenu(player, usersMenu);
-            else player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<no_players>"]}");
-        }), NeedExtendGang(gang) || (sizeSkill != null && gang.MembersList.Count >= (Config.MaxMembers+sizeSkill.Level)) || gang.MembersList.Count >= Config.MaxMembers);
+            if(usersMenu.MenuOptions.Count > 0)
+                MenuManager.OpenChatMenu(player, usersMenu);
+            else
+                player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<no_players>"]}");
+
+        }, NeedExtendGang(gang) || (sizeSkill != null && gang.MembersList.Count >= (Config.MaxMembers+sizeSkill.Level)) || gang.MembersList.Count >= Config.MaxMembers);
         if (Config.ExtendCost.Value.Count > 0 && StoreApi != null)
         {
-            menu.AddMenuOption(Localizer["menu<extend>"], ((player, option) =>
+            menu.AddMenuOption(Localizer["menu<extend>"], (player, option) =>
             {
                 var pricesMenu = new ChatMenu(Localizer["menu<extend_date>"]);
+
                 foreach (var price in Config.ExtendCost.Value)
                 {
-                    pricesMenu.AddMenuOption(Localizer["menu<extend_select_date>", price.Day, price.Value], ((player, option) =>
+                    pricesMenu.AddMenuOption(Localizer["menu<extend_select_date>", price.Day, price.Value], (player, option) =>
                     {
                         Task.Run(async () =>
                         {
@@ -423,6 +450,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                         var newDate = (int)(addDay.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
                                         await connection.ExecuteAsync($"UPDATE `gang_group` SET `end_date` = {newDate} WHERE `id` = {gang.DatabaseID}");
                                         gang.EndDate = newDate;
+
                                         Server.NextFrame(() => {
                                             StoreApi.GivePlayerCredits(player, -price.Value);
                                             player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<extend_success>"]}");
@@ -433,36 +461,38 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                             catch (Exception ex)
                             {
                                 Logger.LogError("{OpenAdminMenu} Failed extend gang! | " + ex.Message);
-                                Logger.LogDebug(ex.Message);
                                 throw new Exception("[Gangs] Failed extend gang! | " + ex.Message);
                             }
                         });
-                    }), StoreApi.GetPlayerCredits(player) < price.Value);
+                    }, StoreApi.GetPlayerCredits(player) < price.Value);
                 }
+
                 pricesMenu.ExitButton = true;
                 MenuManager.OpenChatMenu(player, pricesMenu);
-            }));
+            });
         }
+
         if(Config.RenameCost.Value > 0)
         {
             if(StoreApi != null)
             {
-                menu.AddMenuOption(Localizer["menu<rename_with_credits>", Config.RenameCost.Value], ((player, option) =>
+                menu.AddMenuOption(Localizer["menu<rename_with_credits>", Config.RenameCost.Value], (player, option) =>
                 {
                     userInfo[slot].Status = 2;
                     player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<rename_print>"]}");
-                }), NeedExtendGang(gang) || StoreApi.GetPlayerCredits(player) < Config.RenameCost.Value);
+                }, NeedExtendGang(gang) || StoreApi.GetPlayerCredits(player) < Config.RenameCost.Value);
             }
         }
         else
         {
-            menu.AddMenuOption(Localizer["menu<rename>"], ((player, option) =>
+            menu.AddMenuOption(Localizer["menu<rename>"], (player, option) =>
             {
                 userInfo[slot].Status = 2;
                 player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<rename_print>"]}");
-            }), NeedExtendGang(gang));
+            }, NeedExtendGang(gang));
         }
-        menu.AddMenuOption(Localizer["menu<leader>"], ((player, option) =>
+
+        menu.AddMenuOption(Localizer["menu<leader>"], (player, option) =>
         {
             var usersMenu = new ChatMenu(Localizer["menu<players>"]);
             
@@ -479,17 +509,19 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         string sql = $"SELECT `id`, `name` FROM `gang_player` WHERE `id` <> {userInfo[player.Slot].DatabaseID} AND `gang_id` = {userInfo[player.Slot].GangId};";
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
-                        while(await reader.ReadAsync())
-                        {
+
+                        while(await reader.ReadAsync()) {
                             users.Add(reader.GetInt32(0), reader.GetString(1));
                         }
+
                         reader.Close();
+
                         foreach(var user in users)
                         {
-                            usersMenu.AddMenuOption($"{user.Value}", ((player, option) =>
+                            usersMenu.AddMenuOption($"{user.Value}", (player, option) =>
                             {
                                 var acceptMenu = new ChatMenu(Localizer["menu<leader_sure>", user.Value]);
-                                acceptMenu.AddMenuOption(Localizer["Yes"], ((player, option) =>
+                                acceptMenu.AddMenuOption(Localizer["Yes"], (player, option) =>
                                 {
                                     Task.Run(async () =>
                                     {
@@ -499,8 +531,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                             {
                                                 await connection.OpenAsync();
 
-                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `rank` = 0 WHERE `id` = {user.Key}");
-                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `rank` = 1 WHERE `id` = {userInfo[player.Slot].DatabaseID}");
+                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `gang_hierarchy` = 0 WHERE `id` = {user.Key}");
+                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `gang_hierarchy` = 1 WHERE `id` = {userInfo[player.Slot].DatabaseID}");
 
                                                 userInfo[player.Slot].Rank = 1;
                                                 Server.NextFrame(() => {
@@ -520,17 +552,15 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                         catch (Exception ex)
                                         {
                                             Logger.LogError("{CommandGang} Fail transfer leader! | " + ex.Message);
-                                            Logger.LogDebug(ex.Message);
                                             throw new Exception("[Gangs] Fail transfer leader! | " + ex.Message);
                                         }
                                     });
-                                }));
-                                acceptMenu.AddMenuOption(Localizer["No"], ((invited, option) =>
-                                {
+                                });
+                                acceptMenu.AddMenuOption(Localizer["No"], (invited, option) => {
                                     MenuManager.OpenChatMenu(player, menu);
-                                }));
+                                });
                                 MenuManager.OpenChatMenu(player, acceptMenu);
-                            }));        
+                            });        
                         }
                         Server.NextFrame(() => {
                             if(usersMenu.MenuOptions.Count > 0) MenuManager.OpenChatMenu(player, usersMenu);
@@ -541,17 +571,17 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 catch (Exception ex)
                 {
                     Logger.LogError("{OpenAdminMenu} Failed check players to transfer leader in database | " + ex.Message);
-                    Logger.LogDebug(ex.Message);
                     throw new Exception("[Gangs] Failed check players to transfer leader in database! | " + ex.Message);
                 }
             });
-        }), NeedExtendGang(gang));
+        }, NeedExtendGang(gang));
         if(userInfo[slot].Rank == 0)
         {    
-            menu.AddMenuOption(Localizer["menu<disband>"], ((player, option) =>
+            menu.AddMenuOption(Localizer["menu<disband>"], (player, option) =>
             {
                 var confirmMenu = new ChatMenu(Localizer["Sure"]);
-                confirmMenu.AddMenuOption(Localizer["Yes"], ((player, option) =>
+
+                confirmMenu.AddMenuOption(Localizer["Yes"], (player, option) =>
                 {
                     Task.Run(async () =>
                     {
@@ -586,17 +616,17 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         catch (Exception ex)
                         {
                             Logger.LogError("{OpenAdminMenu} Failed dissolve in database! | " + ex.Message);
-                            Logger.LogDebug(ex.Message);
                             throw new Exception("[Gangs] Failed dissolve in database! | " + ex.Message);
                         }
                     });
-                }));
-                confirmMenu.AddMenuOption(Localizer["Cancel"], ((player, option) =>
-                {
+                });
+
+                confirmMenu.AddMenuOption(Localizer["Cancel"], (player, option) => {
                     MenuManager.OpenChatMenu(player, menu);
-                }));  
+                });  
+
                 MenuManager.OpenChatMenu(player, confirmMenu);
-            }));
+            });
         }
         menu.ExitButton = true;
         MenuManager.OpenChatMenu(player, menu);
@@ -604,7 +634,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 
     public void OpenStatisticMenu(CCSPlayerController? player, Gang gang)
     {
-        if (player == null || !player.IsValid || player.IsBot) return;
+        if (player == null || !player.IsValid || player.IsBot)
+            return;
         
         Task.Run(async () =>
         {
@@ -621,9 +652,12 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         var count = data["Count"];
 
                     var owner = await connection.QueryAsync(@"
-                        SELECT `name` FROM `gang_player` WHERE `gang_id` = @gangid AND `rank` = 0", 
+                        SELECT `name`
+                        FROM `gang_player`
+                        WHERE `gang_id` = @gangid AND `gang_hierarchy` = 0",
                         new { gangid = gang.DatabaseID });
-                        data = (IDictionary<string,object>)owner.First();
+
+                    data = (IDictionary<string,object>)owner.First();
                         var name = data["name"];
 
                     Server.NextFrame(() => {
@@ -672,6 +706,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
+
                         if(await reader.ReadAsync())
                             gang.SkillList.Add(new Skill( SkillName, reader.GetInt32(0), maxLevel, price));
                     }
@@ -688,7 +723,6 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         else
                         {
                             Logger.LogError("Failed send info in database 2! | " + ex.Message);
-                            Logger.LogDebug(ex.Message);
                             throw new Exception("[Gangs] Failed send info in database 2! | " + ex.Message);
                         }
                     }
@@ -698,7 +732,6 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         catch (Exception ex)
         {
             Logger.LogError("Failed send info in database | " + ex.Message);
-            Logger.LogDebug(ex.Message);
             throw new Exception("[Gangs] Failed send info in database! | " + ex.Message);
         }
     }
@@ -736,7 +769,6 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     else
                     {
                         Logger.LogError("Failed send info in database 2! | " + ex.Message);
-                        Logger.LogDebug(ex.Message);
                         throw new Exception("[Gangs] Failed send info in database 2! | " + ex.Message);
                     }
                 }
@@ -745,7 +777,6 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         catch (Exception ex)
         {
             Logger.LogError("Failed send info in database | " + ex.Message);
-            Logger.LogDebug(ex.Message);
             throw new Exception("[Gangs] Failed send info in database! | " + ex.Message);
         }
     }
@@ -773,7 +804,6 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
             catch (Exception ex)
             {
                 Logger.LogError("{GetMembersCount} Failed get value in database | " + ex.Message);
-                Logger.LogDebug(ex.Message);
                 throw new Exception("[Gangs] Failed get value in database! | " + ex.Message);
             }
         });
@@ -781,7 +811,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
     }
     public int GetGangLevel(Gang gang)
     {
-        if (gang == null) return -1;
+        if (gang == null) 
+            return -1;
 
         return gang.Exp / Config.ExpInc;
     }
