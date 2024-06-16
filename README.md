@@ -7,8 +7,9 @@
 > * more skills: gravity, speed & armor
 > * added the prefix from lang on chat messages
 > * changed messages lang key to: chat< > instead of menu< >
-> * fixed missing localizer for disband, missing brackets in lang, wrong localizer on skills menu
+> * fixed missing localizers, missing brackets in lang, wrong localizer on skills menu
 > * cleaned up code and removed unnecessary stuff
+> * see commits for other changes
 
 ## old readme from main below
 --------------------------------------------
