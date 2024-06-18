@@ -1,4 +1,4 @@
-namespace Gangs{
+namespace Gangs {
     public class UserInfo
     {
         public required string SteamID { get; set; }

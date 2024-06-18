@@ -1,4 +1,4 @@
-namespace Gangs{
+namespace Gangs {
     public record class Gang (
         string name,
         int ServerId,

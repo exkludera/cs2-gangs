@@ -116,21 +116,18 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 await using (var connection = new MySqlConnection(dbConnectionString))
                 {
                     connection.Open();
-                    string sql = @"
-                    CREATE TABLE IF NOT EXISTS `gang_group` (
+                    string sql = @"CREATE TABLE IF NOT EXISTS `gang_group` (
                         `id` int(20) NOT NULL AUTO_INCREMENT,
                         `name` varchar(32) NOT NULL,
                         `exp` int(32) NOT NULL DEFAULT 0,
                         `server_id` int(16) NOT NULL DEFAULT 0,
                         `create_date` int(32) NOT NULL,
                         `end_date` int(32) NOT NULL,
-                    PRIMARY KEY (id)
+                        PRIMARY KEY (id)
                     ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
-
                     await connection.ExecuteAsync(sql);
 
-                    sql = @"
-                    CREATE TABLE IF NOT EXISTS `gang_player` (
+                    sql = @"CREATE TABLE IF NOT EXISTS `gang_player` (
 					    `id` int(20) NOT NULL AUTO_INCREMENT,
                         `gang_id` int(20) NOT NULL,
                         `steam_id` varchar(32) NOT NULL,
@@ -138,20 +135,17 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         `gang_hierarchy` int(16) NOT NULL,
                         `inviter_name` varchar(32) NULL DEFAULT NULL,
                         `invite_date` int(32) NOT NULL,
-                    FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
-                    PRIMARY KEY (id)
+                        FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
+                        PRIMARY KEY (id)
                     ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
-
                     await connection.ExecuteAsync(sql);
 
-                    sql = @"
-                    CREATE TABLE IF NOT EXISTS `gang_perk` (
+                    sql = @"CREATE TABLE IF NOT EXISTS `gang_perk` (
                         `id` int(20) NOT NULL AUTO_INCREMENT,
                         `gang_id` int(20) NOT NULL,
-                    FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
-                    PRIMARY KEY (id)
+                        FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
+                        PRIMARY KEY (id)
                     ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
-
                     await connection.ExecuteAsync(sql);
                 }
 			}
@@ -646,8 +640,11 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     await connection.OpenAsync();
 
                     var countmembers = await connection.QueryAsync(@"
-                        SELECT COUNT(*) as Count FROM `gang_player` WHERE `gang_id` = @gangid", 
+                        SELECT COUNT(*) as Count
+                        FROM `gang_player`
+                        WHERE `gang_id` = @gangid", 
                         new { gangid = gang.DatabaseID });
+
                         var data = (IDictionary<string,object>)countmembers.First();
                         var count = data["Count"];
 
@@ -657,7 +654,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         WHERE `gang_id` = @gangid AND `gang_hierarchy` = 0",
                         new { gangid = gang.DatabaseID });
 
-                    data = (IDictionary<string,object>)owner.First();
+                        data = (IDictionary<string,object>)owner.First();
                         var name = data["name"];
 
                     Server.NextFrame(() => {
@@ -666,18 +663,19 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         int level = GetGangLevel(gang);
                         int needexp = level * Config.ExpInc + Config.ExpInc;
 
-                        statmenu.AddMenuOption(Localizer["menu<statistic_name>", gang.Name], ((player, option) =>{}), true);
+                        statmenu.AddMenuOption(Localizer["menu<statistic_name>", gang.Name], (player, option) => { }, true);
 
-                        statmenu.AddMenuOption(Localizer["menu<statistic_leader>", name], ((player, option) => { }), true);
+                        statmenu.AddMenuOption(Localizer["menu<statistic_leader>", name], (player, option) => { }, true);
 
-                        statmenu.AddMenuOption(Localizer["menu<statistic_num_players>", count], ((player, option) =>{}), true);
+                        statmenu.AddMenuOption(Localizer["menu<statistic_num_players>", count], (player, option) => { }, true);
 
-                        statmenu.AddMenuOption(Localizer["menu<statistic_lvl>", level, gang.Exp, needexp], ((player, option) => { }), true);
+                        statmenu.AddMenuOption(Localizer["menu<statistic_lvl>", level, gang.Exp, needexp], (player, option) => { }, true);
 
                         DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
                         dateTime = dateTime.AddSeconds(gang.CreateDate).ToLocalTime();
                         var date = dateTime.ToString("dd.MM.yyyy") + " " + dateTime.ToString("HH:mm");
-                        statmenu.AddMenuOption(Localizer["menu<statistic_create_date>", date], ((player, option) => { }), true);
+
+                        statmenu.AddMenuOption(Localizer["menu<statistic_create_date>", date], (player, option) => { }, true);
 
                         MenuManager.OpenChatMenu(player, statmenu);
                     });
@@ -702,7 +700,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 {
                     try
                     {
-                        string sql = $"SELECT `{SkillName}` FROM `gang_perk` WHERE `gang_id` = '{gang.DatabaseID}';";
+                        string sql = $"SELECT `{SkillName}` FROM `gang_perk` WHERE `gang_id` = {gang.DatabaseID};";
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
@@ -747,7 +745,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     var gang = GangList.Find(x=>x.DatabaseID == GangID);
                     if(gang != null)
                     {
-                        string sql = $"SELECT `{SkillName}` FROM `gang_perk` WHERE `gang_id` = '{gang.DatabaseID}';";
+                        string sql = $"SELECT `{SkillName}` FROM `gang_perk` WHERE `gang_id` = {gang.DatabaseID};";
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
