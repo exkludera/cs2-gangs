@@ -41,6 +41,9 @@ namespace Gangs
 		[JsonPropertyName("ExpInc")]
 		public int ExpInc { get; set; } = 100;
 
+        [JsonPropertyName("ClanTags")]
+        public bool ClanTags { get; set; } = true;
+
         [JsonPropertyName("ConfigVersion")]
         public override int Version { get; set; } = 1;
     }

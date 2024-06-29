@@ -8,12 +8,13 @@ using MySqlConnector;
 using GangsAPI;
 using CounterStrikeSharp.API.Core.Capabilities;
 using StoreApi;
+using System.Text.RegularExpressions;
 
 namespace Gangs;
 public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 {
     public override string ModuleName => "Gangs";
-    public override string ModuleVersion => "0.1.1";
+    public override string ModuleVersion => "0.1.2";
     public override string ModuleAuthor => "Faust, modified by exkludera";
 
     public GangsConfig Config {get; set; } = new();
@@ -167,14 +168,14 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
             return;
         
         var slot = player.Slot;
-        
+
         var menu = new ChatMenu(Localizer["menu<title>"]);
 
         if (userInfo[slot].DatabaseID != -1)
         {
             var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
 
-            if(gang != null)
+            if (gang != null)
             {
                 var days = Helper.ConvertUnixToDateTime(gang.EndDate).Subtract(DateTime.Now).Days;
 
@@ -262,6 +263,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 
                                     Server.NextFrame(() => {
                                         player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<leave_success>"]}");
+                                        clanTagPlayers.Remove(player);
                                     });
                                 }
                             }
@@ -396,6 +398,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                                 Server.NextFrame(() => {
                                                     invited.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<invite_welcome>", gang.Name]}");
                                                     inviter.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<invite_accept>", invited.PlayerName]}");
+                                                    clanTagPlayers.Remove(invited);
                                                 });
                                             }
                                         }
@@ -604,6 +607,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                         };
                                     }
                                     GangList.Remove(gang);
+                                    clanTagPlayers.Remove(player);
                                 });
                             }
                         }
@@ -689,94 +693,186 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
     }
     #endregion
 
-    public async Task AddSkillInDB(string SkillName, int maxLevel, int price)
+    public async Task EnsureColumnExists(string skillName)
     {
         try
         {
             await using (var connection = new MySqlConnection(dbConnectionString))
             {
                 await connection.OpenAsync();
-                foreach(var gang in GangList)
+                string checkColumnSql = $"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'gang_perk' AND column_name = '{skillName}';";
+                var checkColumnCommand = connection.CreateCommand();
+                checkColumnCommand.CommandText = checkColumnSql;
+                int columnExists = Convert.ToInt32(await checkColumnCommand.ExecuteScalarAsync());
+
+                if (columnExists == 0)
+                {
+                    string addColumnSql = $"ALTER TABLE `gang_perk` ADD COLUMN `{skillName}` int(32) NOT NULL DEFAULT 0;";
+                    var addColumnCommand = connection.CreateCommand();
+                    addColumnCommand.CommandText = addColumnSql;
+                    await addColumnCommand.ExecuteNonQueryAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Failed to ensure column existence | " + ex.Message);
+            throw new Exception("[Gangs] Failed to ensure column existence! | " + ex.Message);
+        }
+    }
+
+    public async Task AddSkillInDB(string skillName, int maxLevel, int price)
+    {
+        await EnsureColumnExists(skillName);
+
+        try
+        {
+            await using (var connection = new MySqlConnection(dbConnectionString))
+            {
+                await connection.OpenAsync();
+
+                foreach (var gang in GangList)
                 {
                     try
                     {
-                        string sql = $"SELECT `{SkillName}` FROM `gang_perk` WHERE `gang_id` = {gang.DatabaseID};";
+                        string sql = $"SELECT `{skillName}` FROM `gang_perk` WHERE `gang_id` = {gang.DatabaseID};";
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
 
-                        if(await reader.ReadAsync())
-                            gang.SkillList.Add(new Skill( SkillName, reader.GetInt32(0), maxLevel, price));
+                        if (await reader.ReadAsync())
+                        {
+                            gang.SkillList.Add(new Skill(skillName, reader.GetInt32(0), maxLevel, price));
+                        }
+                        reader.Close();
                     }
                     catch (Exception ex)
                     {
-                        if(ex.Message.Contains("Unknown column"))
-                        {
-                            string sql = $"ALTER TABLE `gang_perk` ADD COLUMN `{SkillName}` int(32) NOT NULL DEFAULT 0;";
-                            var command = connection.CreateCommand();
-                            command.CommandText = sql;
-                            await command.ExecuteNonQueryAsync();
-                            await AddSkillInDB(SkillName, maxLevel, price);
-                        }
-                        else
-                        {
-                            Logger.LogError("Failed send info in database 2! | " + ex.Message);
-                            throw new Exception("[Gangs] Failed send info in database 2! | " + ex.Message);
-                        }
+                        Logger.LogError("Failed to add skill in database 2! | " + ex.Message);
+                        throw new Exception("[Gangs] Failed to add skill in database 2! | " + ex.Message);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError("Failed send info in database | " + ex.Message);
-            throw new Exception("[Gangs] Failed send info in database! | " + ex.Message);
+            Logger.LogError("Failed to add skill in database | " + ex.Message);
+            throw new Exception("[Gangs] Failed to add skill in database! | " + ex.Message);
         }
     }
-    public async Task AddSkillInDB(int GangID, string SkillName, int maxLevel, int price)
+
+    public async Task AddSkillInDB(int gangID, string skillName, int maxLevel, int price)
     {
+        await EnsureColumnExists(skillName);
+
         try
         {
             await using (var connection = new MySqlConnection(dbConnectionString))
             {
                 await connection.OpenAsync();
+
                 try
                 {
-                    var gang = GangList.Find(x=>x.DatabaseID == GangID);
-                    if(gang != null)
+                    var gang = GangList.Find(x => x.DatabaseID == gangID);
+                    if (gang != null)
                     {
-                        string sql = $"SELECT `{SkillName}` FROM `gang_perk` WHERE `gang_id` = {gang.DatabaseID};";
+                        string sql = $"SELECT `{skillName}` FROM `gang_perk` WHERE `gang_id` = {gang.DatabaseID};";
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
 
-                        if(await reader.ReadAsync())
-                            gang.SkillList.Add(new Skill( SkillName, reader.GetInt32(0), maxLevel, price));
+                        if (await reader.ReadAsync())
+                        {
+                            gang.SkillList.Add(new Skill(skillName, reader.GetInt32(0), maxLevel, price));
+                        }
+                        reader.Close();
                     }
                 }
                 catch (Exception ex)
                 {
-                    if(ex.Message.Contains("Unknown column"))
-                    {
-                        string sql = $"ALTER TABLE `gang_perk` ADD COLUMN `{SkillName}` int(32) NOT NULL DEFAULT 0;";
-                        var command = connection.CreateCommand();
-                        command.CommandText = sql;
-                        await command.ExecuteNonQueryAsync();
-                        await AddSkillInDB(SkillName, maxLevel, price);
-                    }
-                    else
-                    {
-                        Logger.LogError("Failed send info in database 2! | " + ex.Message);
-                        throw new Exception("[Gangs] Failed send info in database 2! | " + ex.Message);
-                    }
+                    Logger.LogError("Failed to add skill in database 2! | " + ex.Message);
+                    throw new Exception("[Gangs] Failed to add skill in database 2! | " + ex.Message);
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError("Failed send info in database | " + ex.Message);
-            throw new Exception("[Gangs] Failed send info in database! | " + ex.Message);
+            Logger.LogError("Failed to add skill in database | " + ex.Message);
+            throw new Exception("[Gangs] Failed to add skill in database! | " + ex.Message);
         }
+    }
+
+    public void AddScoreboardTagToPlayer(CCSPlayerController player)
+    {
+        var gang = GangList.Find(x => x.DatabaseID == userInfo[player.Slot].GangId);
+        try
+        {
+            AddTimer(3.0f, () =>
+            {
+                if (string.IsNullOrEmpty(gang?.name))
+                    return;
+
+                if (player == null || !player.IsValid)
+                    return;
+
+                string originalPlayerName = player.PlayerName;
+
+                string stripedClanTag = RemovePlayerTags(player.Clan ?? "");
+
+                player.Clan = $"{stripedClanTag} [{gang.name}]";
+
+                player.PlayerName = originalPlayerName + " ";
+
+                AddTimer(0.1f, () =>
+                {
+                    if (player.IsValid)
+                    {
+                        Utilities.SetStateChanged(player, "CCSPlayerController", "m_szClan");
+                        Utilities.SetStateChanged(player, "CBasePlayerController", "m_iszPlayerName");
+                    }
+                });
+
+                AddTimer(0.2f, () =>
+                {
+                    if (player.IsValid) player.PlayerName = originalPlayerName;
+                });
+
+                AddTimer(0.3f, () =>
+                {
+                    if (player.IsValid) Utilities.SetStateChanged(player, "CBasePlayerController", "m_iszPlayerName");
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Error in AddScoreboardTagToPlayer | " + ex.Message);
+        }
+    }
+
+    public string RemovePlayerTags(string input)
+    {
+        List<string> playerTagsToRemove = new List<string>();
+
+        foreach (var gang in GangList)
+        {
+            if (!string.IsNullOrEmpty(gang.Name))
+            {
+                playerTagsToRemove.Add($"[{gang.Name}]");
+            }
+        }
+
+        if (!string.IsNullOrEmpty(input))
+        {
+            foreach (var strToRemove in playerTagsToRemove)
+            {
+                if (input.Contains(strToRemove))
+                {
+                    input = Regex.Replace(input, Regex.Escape(strToRemove), string.Empty, RegexOptions.IgnoreCase).Trim();
+                }
+            }
+        }
+
+        return input;
     }
 
     public int GetMembersCount(int gang_id)
