@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GangsGravity", "Modules\Gan
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GangsArmor", "Modules\GangsArmor\GangsArmor.csproj", "{2E11E614-F3F6-423F-B0A0-764C6E8C14B7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GangsDamage", "Modules\GangsDamage\GangsDamage.csproj", "{724562B3-1E6A-4793-8C2C-D05F3AF0F5E4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +61,10 @@ Global
 		{2E11E614-F3F6-423F-B0A0-764C6E8C14B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2E11E614-F3F6-423F-B0A0-764C6E8C14B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2E11E614-F3F6-423F-B0A0-764C6E8C14B7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{724562B3-1E6A-4793-8C2C-D05F3AF0F5E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{724562B3-1E6A-4793-8C2C-D05F3AF0F5E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{724562B3-1E6A-4793-8C2C-D05F3AF0F5E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{724562B3-1E6A-4793-8C2C-D05F3AF0F5E4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -69,6 +75,7 @@ Global
 		{2539C19A-5E70-4247-B8F7-5D669829FD24} = {D927BCF9-3042-4B5F-9CCF-5B340E9061F0}
 		{DA5AA341-F578-4CF0-B149-BF8A4F9D851E} = {D927BCF9-3042-4B5F-9CCF-5B340E9061F0}
 		{2E11E614-F3F6-423F-B0A0-764C6E8C14B7} = {D927BCF9-3042-4B5F-9CCF-5B340E9061F0}
+		{724562B3-1E6A-4793-8C2C-D05F3AF0F5E4} = {D927BCF9-3042-4B5F-9CCF-5B340E9061F0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {0AF75158-FF6F-4372-A4B6-83196ACEE5EF}

@@ -13,12 +13,31 @@ namespace Gangs;
 
 public partial class Gangs
 {
-	private void RegisterEvents()
+    HashSet<CCSPlayerController> clanTagPlayers = new HashSet<CCSPlayerController>();
+    private void RegisterEvents()
 	{
 		RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnClientAuthorized>(OnClientAuthorized);
 
-		AddCommandListener("say", OnCommandSay, HookMode.Pre);
+        RegisterListener<Listeners.OnTick>(() =>
+        {
+            foreach (CCSPlayerController player in Utilities.GetPlayers())
+            {
+                if (player == null || player.IsBot || player.IsHLTV || player.Connected != PlayerConnectedState.PlayerConnected)
+                    return;
+
+                if (clanTagPlayers.Contains(player))
+                    return;
+
+                if (Config.ClanTags)
+                {
+                    AddScoreboardTagToPlayer(player);
+                    clanTagPlayers.Add(player);
+                }
+            }
+        });
+
+        AddCommandListener("say", OnCommandSay, HookMode.Pre);
 		AddCommandListener("say_team", OnCommandSay, HookMode.Pre);
 
         RegisterListener<Listeners.OnMapEnd>(() => 
@@ -50,25 +69,25 @@ public partial class Gangs
 
 	}
 
-    private void OnClientAuthorized(int playerSlot, SteamID steamID)
-	{
-		CCSPlayerController? player = Utilities.GetPlayerFromSlot(playerSlot);
+    public void OnClientAuthorized(int playerSlot, SteamID steamID)
+    {
+        CCSPlayerController? player = Utilities.GetPlayerFromSlot(playerSlot);
 
-		if (player == null || !player.IsValid || player.IsBot || player.IsHLTV)
-			return;
+        if (player == null || !player.IsValid || player.IsBot || player.IsHLTV)
+            return;
 
-		if (player.AuthorizedSteamID == null)
-		{
-			AddTimer(3.0f, () => {
-				OnClientAuthorized(playerSlot, steamID);
-			});
-			return;
-		}
+        if (player.AuthorizedSteamID == null)
+        {
+            AddTimer(3.0f, () => {
+                OnClientAuthorized(playerSlot, steamID);
+            });
+            return;
+        }
 
         string nickname = player.PlayerName;
         string steamid = steamID.SteamId2;
 
-        Task.Run(async () => 
+        Task.Run(async () =>
         {
             try
             {
@@ -76,14 +95,13 @@ public partial class Gangs
                 {
                     await connection.OpenAsync();
                     var command = connection.CreateCommand();
-                    string sql = $"SELECT player_table.* FROM gang_player AS player_table INNER JOIN gang_group AS gang_table ON player_table.gang_id = gang_table.id WHERE player_table.steam_id = '{steamid}' AND gang_table.server_id = {Config.ServerId};";
-
+                    string sql = $"SELECT player_table.* FROM `gang_player` AS `player_table` INNER JOIN `gang_group` AS `gang_table` ON player_table.gang_id = gang_table.id WHERE player_table.steam_id = '{steamid}' AND gang_table.server_id = {Config.ServerId};";
                     command.CommandText = sql;
                     var reader = await command.ExecuteReaderAsync();
-
-                    if(await reader.ReadAsync())
+                    if (await reader.ReadAsync())
                     {
-                        userInfo[playerSlot] = new UserInfo{
+                        userInfo[playerSlot] = new UserInfo
+                        {
                             SteamID = reader.GetString(2),
                             Status = 0,
                             DatabaseID = reader.GetInt32(0),
@@ -92,29 +110,29 @@ public partial class Gangs
                             InviterName = reader.GetString(5),
                             InviteDate = reader.GetInt32(6)
                         };
-                        if(!String.Equals(reader.GetString(3), nickname))
+                        if (!String.Equals(reader.GetString(3), nickname))
                         {
-                            sql = $"UPDATE `gang_player` SET `name` = '{nickname}' WHERE `id` = {reader.GetInt32(0)}";
+                            sql = $"UPDATE `gang_player` SET `name` = '{nickname}' WHERE `id` = '{reader.GetInt32(0)}'";
                             command.CommandText = sql;
                             await command.ExecuteNonQueryAsync();
                         }
                     }
                     else {
-                        userInfo[playerSlot] = new UserInfo{ SteamID = steamid };
+                        userInfo[playerSlot] = new UserInfo { SteamID = steamid };
                     }
-                    reader.Close();
-                        
+                    await reader.CloseAsync();
                 };
             }
             catch (Exception ex)
             {
                 Logger.LogError("{OnClientAuthorized} Failed get info in database | " + ex.Message);
-                throw new Exception("[Gangs] Failed get info in database! | " + ex.Message);
+                Logger.LogDebug(ex.Message);
+                throw new Exception("[Guild] Failed get info in database! | " + ex.Message);
             }
         });
-	}
+    }
 
-	[GameEventHandler]
+    [GameEventHandler]
 	public HookResult OnClientDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
 	{		
         CCSPlayerController? player = @event.Userid;
@@ -215,7 +233,7 @@ public partial class Gangs
                                     sql = $"INSERT INTO `gang_player` (`gang_id`, `steam_id`, `name`, `gang_hierarchy`, `inviter_name`, `invite_date`) VALUES ({gangId}, '{userInfo[slot].SteamID}', '{playerName}', 0, '{playerName}', {createDate});";
                                     await connection.ExecuteAsync(sql);
 
-                                    sql = $"SELECT `id` FROM `gang_player` WHERE gang_id = {gangId} AND steam_id = '{userInfo[slot].SteamID}'";
+                                    sql = $"SELECT `id` FROM `gang_player` WHERE `gang_id` = {gangId} AND `steam_id` = '{userInfo[slot].SteamID}'";
                                     command.CommandText = sql;
                                     var reader3 = await command.ExecuteReaderAsync();
 
