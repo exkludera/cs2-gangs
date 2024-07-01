@@ -65,7 +65,9 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 
             if(player == null || !player.IsValid || player.IsBot || player == @event.Userid) 
                 return HookResult.Continue;
-            
+
+            clanTagPlayers.Remove(player);
+
             var slot = player.Slot;
 
             var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
@@ -77,7 +79,19 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 return HookResult.Continue;
             
             gang.Exp += 1;
-            
+
+            return HookResult.Continue;
+        });
+
+        RegisterEventHandler<EventPlayerSpawn>((@event, info) =>
+        {
+            var player = @event.Userid;
+
+            if (player == null || !player.IsValid || player.IsBot || player == @event.Userid)
+                return HookResult.Continue;
+
+            clanTagPlayers.Remove(player);
+
             return HookResult.Continue;
         });
 

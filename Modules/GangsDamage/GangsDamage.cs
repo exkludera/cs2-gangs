@@ -1,11 +1,9 @@
 using System.Reflection;
-using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
 using CounterStrikeSharp.API.Modules.Memory;
 using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using GangsAPI;
@@ -69,7 +67,6 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                Server.PrintToChatAll("trying to load dmg hook");
                 VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Hook(this.OnTakeDamage, HookMode.Pre);
             }
             //else
