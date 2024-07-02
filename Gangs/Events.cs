@@ -13,32 +13,19 @@ namespace Gangs;
 
 public partial class Gangs
 {
-    HashSet<CCSPlayerController> clanTagPlayers = new HashSet<CCSPlayerController>();
     private void RegisterEvents()
 	{
-		RegisterListener<Listeners.OnMapStart>(OnMapStart);
+        AddCommandListener("say", OnCommandSay, HookMode.Pre);
+        AddCommandListener("say_team", OnCommandSay, HookMode.Pre);
+
+        RegisterListener<Listeners.OnMapStart>(OnMapStart);
         RegisterListener<Listeners.OnClientAuthorized>(OnClientAuthorized);
 
-        RegisterListener<Listeners.OnTick>(() =>
+        RegisterEventHandler<EventPlayerSpawn>((@event, info) =>
         {
-            foreach (CCSPlayerController player in Utilities.GetPlayers())
-            {
-                if (player == null || player.IsBot || player.IsHLTV || player.Connected != PlayerConnectedState.PlayerConnected)
-                    return;
-
-                if (clanTagPlayers.Contains(player))
-                    return;
-
-                if (Config.ClanTags)
-                {
-                    AddScoreboardTagToPlayer(player);
-                    clanTagPlayers.Add(player);
-                }
-            }
+            AddScoreboardTagToPlayer(@event.Userid!);
+            return HookResult.Continue;
         });
-
-        AddCommandListener("say", OnCommandSay, HookMode.Pre);
-		AddCommandListener("say_team", OnCommandSay, HookMode.Pre);
 
         RegisterListener<Listeners.OnMapEnd>(() => 
         {
@@ -67,7 +54,7 @@ public partial class Gangs
             }
         });
 
-	}
+    }
 
     public void OnClientAuthorized(int playerSlot, SteamID steamID)
     {

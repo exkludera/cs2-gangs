@@ -63,10 +63,10 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         {
             var player = @event.Attacker;
 
-            if(player == null || !player.IsValid || player.IsBot || player == @event.Userid) 
+            if(player == null || !player.IsValid || player.IsBot) 
                 return HookResult.Continue;
 
-            clanTagPlayers.Remove(player);
+            AddScoreboardTagToPlayer(@event.Userid!);
 
             var slot = player.Slot;
 
@@ -79,18 +79,6 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 return HookResult.Continue;
             
             gang.Exp += 1;
-
-            return HookResult.Continue;
-        });
-
-        RegisterEventHandler<EventPlayerSpawn>((@event, info) =>
-        {
-            var player = @event.Userid;
-
-            if (player == null || !player.IsValid || player.IsBot || player == @event.Userid)
-                return HookResult.Continue;
-
-            clanTagPlayers.Remove(player);
 
             return HookResult.Continue;
         });
@@ -277,7 +265,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 
                                     Server.NextFrame(() => {
                                         player.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<leave_success>"]}");
-                                        clanTagPlayers.Remove(player);
+                                        AddScoreboardTagToPlayer(player);
                                     });
                                 }
                             }
@@ -412,7 +400,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                                 Server.NextFrame(() => {
                                                     invited.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<invite_welcome>", gang.Name]}");
                                                     inviter.PrintToChat($" {Localizer["Prefix"]} {Localizer["chat<invite_accept>", invited.PlayerName]}");
-                                                    clanTagPlayers.Remove(invited);
+                                                    AddScoreboardTagToPlayer(invited);
                                                 });
                                             }
                                         }
@@ -621,7 +609,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                         };
                                     }
                                     GangList.Remove(gang);
-                                    clanTagPlayers.Remove(player);
+                                    AddScoreboardTagToPlayer(player);
                                 });
                             }
                         }
@@ -818,6 +806,9 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 
     public void AddScoreboardTagToPlayer(CCSPlayerController player)
     {
+        if (!Config.ClanTags)
+            return;
+
         var gang = GangList.Find(x => x.DatabaseID == userInfo[player.Slot].GangId);
         try
         {
@@ -826,7 +817,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 if (string.IsNullOrEmpty(gang?.name))
                     return;
 
-                if (player == null || !player.IsValid)
+                if (player == null || !player.IsValid || player.IsBot)
                     return;
 
                 string originalPlayerName = player.PlayerName;
