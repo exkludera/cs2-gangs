@@ -43,7 +43,7 @@
     "menu<create>": "Create gang",
     "menu<create_with_credits>": "Create gang ({0} credits)",
 
-    "chat<create_name>": "Write the name of your new gang in the chat",
+    "chat<create_name>": "{green}Write the name of your new gang in the chat",
     "chat<create_success>": "{lightpurple}{0} {default}has created the gang {red}{1}",
 
     //leave
