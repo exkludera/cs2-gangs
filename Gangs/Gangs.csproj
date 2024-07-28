@@ -3,27 +3,17 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<PackageReference Include="CounterStrikeSharp.API" Version="*" />
-		<PackageReference Include="MySqlConnector" Version="*" />
-		<PackageReference Include="Dapper" Version="*" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\GangsAPI\GangsApi.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\Modules\GangsSize\GangsSize.csproj" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\StoreApi\StoreApi.csproj" />
-	</ItemGroup>
-
-	<PropertyGroup>
 		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CounterStrikeSharp.API" Version="1.0.253" />
+		<PackageReference Include="MySqlConnector" Version="2.3.7" />
+		<PackageReference Include="Dapper" Version="2.1.44" />
+		
+		<ProjectReference Include="..\GangsAPI\GangsApi.csproj" />
+		<ProjectReference Include="..\Modules\GangsSize\GangsSize.csproj" />
+		<ProjectReference Include="..\StoreApi\StoreApi.csproj" />
+	</ItemGroup>
+	
 </Project>

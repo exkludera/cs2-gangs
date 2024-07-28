@@ -44,9 +44,7 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
             if (_api == null) return;
             _api.RegisterSkill(moduleName, Config.MaxLevel, Config.Price);
         }
-        AddTimer(1.0f, () => {
-            DamageHook();
-        });
+        AddTimer(1.0f, DamageHook);
     }
 
     public override void Unload(bool hotReload)
@@ -59,7 +57,6 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
 		Config = config;
         Helper.UpdateConfig(config);
     }
-
 
     public void DamageHook()
     {
@@ -100,6 +97,10 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
         if (player == null || _api == null) return HookResult.Continue;
         if (!player.IsValid || player.IsBot) return HookResult.Continue;
         if (player.Connected != PlayerConnectedState.PlayerConnected) return HookResult.Continue;
+
+        if (_api.OnlyTerroristCheck(player))
+            return HookResult.Continue;
+
         var level = _api.GetSkillLevel(player, moduleName);
 
         var damageValue = level * Config.Value;

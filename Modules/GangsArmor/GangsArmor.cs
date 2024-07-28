@@ -17,7 +17,7 @@ public class GangsArmor : BasePlugin, IPluginConfig<ArmorConfig>
     private string moduleName = "armor";
     private GangsApi? _api;
     public ArmorConfig Config {get; set; } = new();
-    
+
     public override void OnAllPluginsLoaded(bool hotReload)
     {
         _api = GangsApi.Capability.Get();
@@ -59,11 +59,16 @@ public class GangsArmor : BasePlugin, IPluginConfig<ArmorConfig>
     {
         if (@event.Userid!.Handle == IntPtr.Zero || @event.Userid.UserId == null)
             return HookResult.Continue;
-        
+
         var player = @event.Userid;
+
         if (player == null || _api == null) return HookResult.Continue;
         if(!player.IsValid || player.IsBot) return HookResult.Continue;
         if(player.Connected != PlayerConnectedState.PlayerConnected) return HookResult.Continue;
+
+        if (_api.OnlyTerroristCheck(player))
+            return HookResult.Continue;
+
         var level = _api.GetSkillLevel(player, moduleName);
 
         var playerPawn = player.PlayerPawn.Value;

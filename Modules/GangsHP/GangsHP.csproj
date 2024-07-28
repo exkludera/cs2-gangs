@@ -3,17 +3,13 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CounterStrikeSharp.API" Version="*" />
-	</ItemGroup>
-
-	<ItemGroup>
+		<PackageReference Include="CounterStrikeSharp.API" Version="1.0.253" />
+		
 		<ProjectReference Include="..\..\GangsAPI\GangsApi.csproj" />
 	</ItemGroup>
 
-	<PropertyGroup>
-		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-	</PropertyGroup>
 </Project>

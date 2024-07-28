@@ -1,76 +1,91 @@
 ﻿using CounterStrikeSharp.API.Core;
 using System.Text.Json.Serialization;
 
-namespace Gangs
+public class GangsConfig : BasePluginConfig
 {
-	public class GangsConfig : BasePluginConfig
-	{
-        [JsonPropertyName("OpenCommands")]
-		public string OpenCommands { get; set; } = "css_gangs;css_gang;css_g";
+    [JsonPropertyName("Prefix")]
+    public string Prefix { get; set; } = "{blue}[Gangs]{default}";
 
-		[JsonPropertyName("DatabaseHost")]
-		public string DatabaseHost { get; set; } = "localhost";
 
-		[JsonPropertyName("DatabasePort")]
-		public int DatabasePort { get; set; } = 3306;
+    [JsonPropertyName("DatabaseHost")]
+    public string DatabaseHost { get; set; } = "localhost";
 
-		[JsonPropertyName("DatabaseUser")]
-		public string DatabaseUser { get; set; } = "user";
+    [JsonPropertyName("DatabasePort")]
+    public int DatabasePort { get; set; } = 3306;
 
-		[JsonPropertyName("DatabasePassword")]
-		public string DatabasePassword { get; set; } = "password";
+    [JsonPropertyName("DatabaseUser")]
+    public string DatabaseUser { get; set; } = "user";
 
-		[JsonPropertyName("DatabaseName")]
-		public string DatabaseName { get; set; } = "db";
+    [JsonPropertyName("DatabasePassword")]
+    public string DatabasePassword { get; set; } = "password";
 
-		[JsonPropertyName("ServerId")]
-		public int ServerId { get; set; } = 0;
+    [JsonPropertyName("DatabaseName")]
+    public string DatabaseName { get; set; } = "db";
 
-		[JsonPropertyName("CreateCost")]
-		public CreateCost CreateCost { get; set; } = new();
+    [JsonPropertyName("ServerId")]
+    public int ServerId { get; set; } = 0;
 
-		[JsonPropertyName("RenameCost")]
-		public RenameCost RenameCost { get; set; } = new();
 
-		[JsonPropertyName("ExtendCost")]
-		public Prices ExtendCost { get; set; } = new();
+    [JsonPropertyName("OpenCommands")]
+    public string OpenCommands { get; set; } = "css_gangs;css_gang;css_g";
 
-		[JsonPropertyName("MaxMembers")]
-		public int MaxMembers { get; set; } = 10;
 
-		[JsonPropertyName("ExpInc")]
-		public int ExpInc { get; set; } = 100;
+    [JsonPropertyName("MaxMembers")]
+    public int MaxMembers { get; set; } = 10;
 
-        [JsonPropertyName("ClanTags")]
-        public bool ClanTags { get; set; } = true;
+    [JsonPropertyName("ExpInc")]
+    public int ExpInc { get; set; } = 100;
 
-        [JsonPropertyName("ConfigVersion")]
-        public override int Version { get; set; } = 1;
-    }
-	public class CreateCost
-	{
-        [JsonPropertyName("Value")]
-		public int Value { get; set; } = 0;
+    [JsonPropertyName("ClanTags")]
+    public bool ClanTags { get; set; } = true;
 
-        [JsonPropertyName("Days")]
-		public int Days { get; set; } = 0;
-	}
-	public class RenameCost
-	{
-        [JsonPropertyName("Value")]
-		public int Value { get; set; } = 0;
-	}
-	public class Prices
-	{
-		[JsonPropertyName("Prices")]
-		public List<ExtendCost> Value { get; set; } = new();
-	}
-	public class ExtendCost
+    [JsonPropertyName("OnlyTerrorists")]
+    public bool OnlyTerrorists { get; set; } = false;
+
+
+    [JsonPropertyName("CreateCost")]
+    public CreateCost CreateCost { get; set; } = new CreateCost
     {
-		[JsonPropertyName("Day")]
-		public int Day { get; set; }
+        Value = 1000,
+        Days = 14
+    };
 
-		[JsonPropertyName("Value")]
-		public int Value { get; set; }
-	}
+    [JsonPropertyName("RenameCost")]
+    public int RenameCost { get; set; } = 250;
+
+    [JsonPropertyName("ExtendCost")]
+    public Prices ExtendCost { get; set; } = new Prices
+    {
+        Value = new List<ExtendCost>
+        {
+            new ExtendCost { Day = 7, Value = 100 },
+            new ExtendCost { Day = 14, Value = 200 },
+            new ExtendCost { Day = 30, Value = 500 },
+            new ExtendCost { Day = 90, Value = 1500 }
+        }
+    };
+}
+
+public class CreateCost
+{
+    [JsonPropertyName("Value")]
+    public int Value { get; set; } = 0;
+
+    [JsonPropertyName("Days")]
+    public int Days { get; set; } = 0;
+}
+
+public class ExtendCost
+{
+    [JsonPropertyName("Day")]
+    public int Day { get; set; }
+
+    [JsonPropertyName("Value")]
+    public int Value { get; set; }
+}
+
+public class Prices
+{
+    [JsonPropertyName("Prices")]
+    public List<ExtendCost> Value { get; set; } = new();
 }

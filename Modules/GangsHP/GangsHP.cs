@@ -50,7 +50,7 @@ public class GangsHP : BasePlugin, IPluginConfig<HPConfig>
 
     public void OnConfigParsed(HPConfig config)
     {
-		Config = config;
+        Config = config;
         Helper.UpdateConfig(config);
     }
     
@@ -61,9 +61,14 @@ public class GangsHP : BasePlugin, IPluginConfig<HPConfig>
             return HookResult.Continue;
         
         var player = @event.Userid;
+
         if (player == null || _api == null) return HookResult.Continue;
         if(!player.IsValid || player.IsBot) return HookResult.Continue;
         if(player.Connected != PlayerConnectedState.PlayerConnected) return HookResult.Continue;
+
+        if (_api.OnlyTerroristCheck(player))
+            return HookResult.Continue;
+
         var level = _api.GetSkillLevel(player, moduleName);
 
         var playerPawn = player.PlayerPawn.Value;
