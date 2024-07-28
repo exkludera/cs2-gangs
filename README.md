@@ -8,7 +8,7 @@
 > * more skills: gravity, speed, armor & damage
 > * added gang clantags
 > * made gang leader able to kick members
-> * option for only allowing Terrorists to use gangs
+> * option to only allow Terrorists to use gangs
 > * added the prefix on chat messages
 > * changed messages lang key to: chat< > instead of menu< >
 > * fixed missing localizers, missing brackets in lang, wrong localizer on skills menu
