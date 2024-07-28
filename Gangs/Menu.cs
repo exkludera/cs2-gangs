@@ -195,6 +195,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
             return;
 
         var menu = new ChatMenu(Localizer["menu<title_with_name>", gang.Name]);
+
         var sizeSkill = gang.SkillList.Find(x => x.Name.Equals("size"));
 
         menu.AddMenuOption(Localizer["menu<invite>"], (player, option) =>

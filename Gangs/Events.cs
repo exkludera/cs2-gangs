@@ -307,6 +307,8 @@ public partial class Gangs
 
     private void OnMapStart(string mapName)
     {
+        GangList.Clear();
+
         Task.Run(async () =>
         {
             try
