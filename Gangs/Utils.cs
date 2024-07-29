@@ -9,6 +9,11 @@ namespace Gangs;
 
 public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 {
+    public void LogError(string message)
+    {
+        Logger.LogError($"[GangsDamage] {message}");
+    }
+
     public void PrintToChat(CCSPlayerController player, string message)
     {
         player.PrintToChat(Config.Prefix + message);
@@ -26,14 +31,14 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
             await using (var connection = new MySqlConnection(dbConnectionString))
             {
                 await connection.OpenAsync();
-                string checkColumnSql = $"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'gang_perk' AND column_name = '{skillName}';";
+                string checkColumnSql = $"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '{Config.Database.TablePerks}' AND column_name = '{skillName}';";
                 var checkColumnCommand = connection.CreateCommand();
                 checkColumnCommand.CommandText = checkColumnSql;
                 int columnExists = Convert.ToInt32(await checkColumnCommand.ExecuteScalarAsync());
 
                 if (columnExists == 0)
                 {
-                    string addColumnSql = $"ALTER TABLE `gang_perk` ADD COLUMN `{skillName}` int(32) NOT NULL DEFAULT 0;";
+                    string addColumnSql = $"ALTER TABLE `{Config.Database.TablePerks}` ADD COLUMN `{skillName}` int(32) NOT NULL DEFAULT 0;";
                     var addColumnCommand = connection.CreateCommand();
                     addColumnCommand.CommandText = addColumnSql;
                     await addColumnCommand.ExecuteNonQueryAsync();
@@ -42,8 +47,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         }
         catch (Exception ex)
         {
-            Logger.LogError("Failed to ensure column existence | " + ex.Message);
-            throw new Exception("[Gangs] Failed to ensure column existence! | " + ex.Message);
+            LogError("(EnsureColumnExists) Failed to ensure column existence | " + ex.Message);
+            throw new Exception("Failed to ensure column existence! | " + ex.Message);
         }
     }
 
@@ -61,7 +66,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 {
                     try
                     {
-                        string sql = $"SELECT `{skillName}` FROM `gang_perk` WHERE `gang_id` = {gang.DatabaseID};";
+                        string sql = $"SELECT `{skillName}` FROM `{Config.Database.TablePerks}` WHERE `gang_id` = {gang.DatabaseID};";
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
@@ -74,16 +79,16 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     }
                     catch (Exception ex)
                     {
-                        Logger.LogError("Failed to add skill in database 2! | " + ex.Message);
-                        throw new Exception("[Gangs] Failed to add skill in database 2! | " + ex.Message);
+                        LogError("(AddSkillInDB) Failed to add skill in database 2! | " + ex.Message);
+                        throw new Exception("Failed to add skill in database 2! | " + ex.Message);
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError("Failed to add skill in database | " + ex.Message);
-            throw new Exception("[Gangs] Failed to add skill in database! | " + ex.Message);
+            LogError("(AddSkillInDB) Failed to add skill in database | " + ex.Message);
+            throw new Exception("Failed to add skill in database! | " + ex.Message);
         }
     }
 
@@ -102,7 +107,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     var gang = GangList.Find(x => x.DatabaseID == gangID);
                     if (gang != null)
                     {
-                        string sql = $"SELECT `{skillName}` FROM `gang_perk` WHERE `gang_id` = {gang.DatabaseID};";
+                        string sql = $"SELECT `{skillName}` FROM `{Config.Database.TablePerks}` WHERE `gang_id` = {gang.DatabaseID};";
                         var command = connection.CreateCommand();
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
@@ -116,15 +121,15 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("Failed to add skill in database 2! | " + ex.Message);
-                    throw new Exception("[Gangs] Failed to add skill in database 2! | " + ex.Message);
+                    LogError("(AddSkillInDB) Failed to add skill in database 2! | " + ex.Message);
+                    throw new Exception("Failed to add skill in database 2! | " + ex.Message);
                 }
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError("Failed to add skill in database | " + ex.Message);
-            throw new Exception("[Gangs] Failed to add skill in database! | " + ex.Message);
+            LogError("(AddSkillInDB) Failed to add skill in database | " + ex.Message);
+            throw new Exception("Failed to add skill in database! | " + ex.Message);
         }
     }
 
@@ -133,7 +138,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         if (player == null || !player.IsValid || player.IsBot)
             return;
             
-        if (!Config.ClanTags)
+        if (!Config.Settings.ClanTags)
             return;
 
         var gang = GangList.Find(x => x.DatabaseID == userInfo[player.Slot].GangId);
@@ -171,7 +176,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         }
         catch (Exception ex)
         {
-            Logger.LogError("Error in AddScoreboardTagToPlayer | " + ex.Message);
+            LogError("(AddScoreboardTagToPlayer) Error in AddScoreboardTagToPlayer | " + ex.Message);
         }
     }
 
@@ -212,8 +217,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 {
                     await connection.OpenAsync();
 
-                    var countmembers = await connection.QueryAsync(@"
-                    SELECT COUNT(*) as Count FROM `gang_player` WHERE `gang_id` = @gangid",
+                    var countmembers = await connection.QueryAsync($@"
+                    SELECT COUNT(*) as Count FROM `{Config.Database.TablePlayers}` WHERE `gang_id` = @gangid",
                         new { gangid = gang_id });
                     var data = (IDictionary<string, object>)countmembers.First();
                     var count = data["Count"];
@@ -223,8 +228,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
             }
             catch (Exception ex)
             {
-                Logger.LogError("{GetMembersCount} Failed get value in database | " + ex.Message);
-                throw new Exception("[Gangs] Failed get value in database! | " + ex.Message);
+                LogError("(GetMembersCount) Failed get value in database | " + ex.Message);
+                throw new Exception("Failed get value in database! | " + ex.Message);
             }
         });
         return iCount;
@@ -235,7 +240,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         if (gang == null)
             return -1;
 
-        return gang.Exp / Config.ExpInc;
+        return gang.Exp / Config.Settings.ExpInc;
     }
 
     public bool NeedExtendGang(Gang gang)

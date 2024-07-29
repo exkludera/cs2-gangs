@@ -91,7 +91,7 @@ public partial class Gangs
                 {
                     await connection.OpenAsync();
                     var command = connection.CreateCommand();
-                    string sql = $"SELECT player_table.* FROM `gang_player` AS `player_table` INNER JOIN `gang_group` AS `gang_table` ON player_table.gang_id = gang_table.id WHERE player_table.steam_id = '{steamid}' AND gang_table.server_id = {Config.ServerId};";
+                    string sql = $"SELECT player_table.* FROM `{Config.Database.TablePlayers}` AS `player_table` INNER JOIN `{Config.Database.TableGroups}` AS `gang_table` ON player_table.gang_id = gang_table.id WHERE player_table.steam_id = '{steamid}';";
                     command.CommandText = sql;
                     var reader = await command.ExecuteReaderAsync();
                     if (await reader.ReadAsync())
@@ -109,7 +109,7 @@ public partial class Gangs
                         if (!String.Equals(reader.GetString(3), nickname))
                         {
                             await reader.CloseAsync();
-                            sql = $"UPDATE `gang_player` SET `name` = '{nickname}' WHERE `id` = '{userInfo[playerSlot].DatabaseID}'";
+                            sql = $"UPDATE `{Config.Database.TablePlayers}` SET `name` = '{nickname}' WHERE `id` = '{userInfo[playerSlot].DatabaseID}'";
                             command.CommandText = sql;
                             await command.ExecuteNonQueryAsync();
                         }
@@ -127,9 +127,8 @@ public partial class Gangs
             }
             catch (Exception ex)
             {
-                Logger.LogError("{OnClientAuthorized} Failed get info in database | " + ex.Message);
-                Logger.LogDebug(ex.Message);
-                throw new Exception("[Guild] Failed get info in database! | " + ex.Message);
+                LogError("(OnClientAuthorized) Failed get info in database | " + ex.Message);
+                throw new Exception("Failed get info in database! | " + ex.Message);
             }
         });
     }
@@ -200,7 +199,7 @@ public partial class Gangs
                         await connection.OpenAsync();
 
                         var command = connection.CreateCommand();
-                        string sql = $"SELECT `name` FROM `gang_group` WHERE `name` = '{message}' AND `server_id` = {Config.ServerId}";
+                        string sql = $"SELECT `name` FROM `{Config.Database.TableGroups}` WHERE `name` = '{message}'";
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
                         if (await reader.ReadAsync() == false)
@@ -208,10 +207,10 @@ public partial class Gangs
                             reader.Close();
                             if (userInfo[slot].Status == 1)
                             {
-                                sql = $"INSERT INTO `gang_group` (`name`, `server_id`, `create_date`, `end_date`) VALUES ('{message}', {Config.ServerId}, {createDate}, {endDate});";
+                                sql = $"INSERT INTO `{Config.Database.TableGroups}` (`name`, `create_date`, `end_date`) VALUES ('{message}', {createDate}, {endDate});";
                                 await connection.ExecuteAsync(sql);
 
-                                sql = $"SELECT `id` FROM `gang_group` WHERE `name` = '{message}' AND `server_id` = {Config.ServerId}";
+                                sql = $"SELECT `id` FROM `{Config.Database.TableGroups}` WHERE `name` = '{message}'";
                                 command.CommandText = sql;
                                 var reader2 = await command.ExecuteReaderAsync();
 
@@ -221,7 +220,6 @@ public partial class Gangs
                                     reader2.Close();
                                     GangList.Add(new Gang(
                                         message,
-                                        Config.ServerId,
                                         createDate,
                                         endDate,
                                         new(),
@@ -229,13 +227,13 @@ public partial class Gangs
                                         0,
                                         gangId));
 
-                                    sql = $"INSERT INTO `gang_perk` (`gang_id`) VALUES ({gangId});";
+                                    sql = $"INSERT INTO `{Config.Database.TablePerks}` (`gang_id`) VALUES ({gangId});";
                                     await connection.ExecuteAsync(sql);
 
-                                    sql = $"INSERT INTO `gang_player` (`gang_id`, `steam_id`, `name`, `gang_hierarchy`, `inviter_name`, `invite_date`) VALUES ({gangId}, '{userInfo[slot].SteamID}', '{playerName}', 0, '{playerName}', {createDate});";
+                                    sql = $"INSERT INTO `{Config.Database.TablePlayers}` (`gang_id`, `steam_id`, `name`, `gang_hierarchy`, `inviter_name`, `invite_date`) VALUES ({gangId}, '{userInfo[slot].SteamID}', '{playerName}', 0, '{playerName}', {createDate});";
                                     await connection.ExecuteAsync(sql);
 
-                                    sql = $"SELECT `id` FROM `gang_player` WHERE `gang_id` = {gangId} AND `steam_id` = '{userInfo[slot].SteamID}'";
+                                    sql = $"SELECT `id` FROM `{Config.Database.TablePlayers}` WHERE `gang_id` = {gangId} AND `steam_id` = '{userInfo[slot].SteamID}'";
                                     command.CommandText = sql;
                                     var reader3 = await command.ExecuteReaderAsync();
 
@@ -269,7 +267,7 @@ public partial class Gangs
                             }
                             else if (userInfo[slot].Status == 2)
                             {
-                                sql = $"UPDATE `gang_group` SET `name` = '{message}' WHERE `id` = {userInfo[player.Slot].GangId}";
+                                sql = $"UPDATE `{Config.Database.TableGroups}` SET `name` = '{message}' WHERE `id` = {userInfo[player.Slot].GangId}";
                                 await connection.ExecuteAsync(sql);
 
                                 var gang = GangList.Find(x => x.DatabaseID == userInfo[player.Slot].GangId);
@@ -295,8 +293,8 @@ public partial class Gangs
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("{OnCommandSay} Failed create in database | " + ex.Message);
-                    throw new Exception("[Gangs] Failed create in database! | " + ex.Message);
+                    LogError("(OnCommandSay) Failed create in database | " + ex.Message);
+                    throw new Exception("Failed create in database! | " + ex.Message);
                 }
             });
             return HookResult.Handled;
@@ -307,8 +305,6 @@ public partial class Gangs
 
     private void OnMapStart(string mapName)
     {
-        GangList.Clear();
-
         Task.Run(async () =>
         {
             try
@@ -318,26 +314,28 @@ public partial class Gangs
                     await connection.OpenAsync();
                     var command = connection.CreateCommand();
 
-                    string sql = $"SELECT `name`, `create_date`, `end_date`, `exp`, `id` FROM `gang_group` WHERE `server_id` = {Config.ServerId};";
+                    string sql = $"SELECT `name`, `create_date`, `end_date`, `exp`, `id` FROM `{Config.Database.TableGroups}`;";
                     command.CommandText = sql;
                     var reader = await command.ExecuteReaderAsync();
 
                     while (await reader.ReadAsync())
                     {
-                        GangList.Add(new Gang(
-                            reader.GetString(0),
-                            Config.ServerId,
-                            reader.GetInt32(1),
-                            reader.GetInt32(2),
-                            new(),
-                            new(),
-                            reader.GetInt32(3),
-                            reader.GetInt32(4)
-                        ));
+                        if (!GangList.Any(g => g.DatabaseID == reader.GetInt32(4)))
+                        {
+                            GangList.Add(new Gang(
+                                reader.GetString(0),
+                                reader.GetInt32(1),
+                                reader.GetInt32(2),
+                                new(),
+                                new(),
+                                reader.GetInt32(3),
+                                reader.GetInt32(4)
+                            ));
+                        }
                     }
                     reader.Close();
 
-                    sql = $"SELECT * FROM `gang_perk`;";
+                    sql = $"SELECT * FROM `{Config.Database.TablePerks}`;";
                     command.CommandText = sql;
                     reader = await command.ExecuteReaderAsync();
 
@@ -367,8 +365,8 @@ public partial class Gangs
             }
             catch (Exception ex)
             {
-                Logger.LogError("{OnMapStart} Failed load map in database | " + ex.Message);
-                throw new Exception("[Gangs] Failed load map in database! | " + ex.Message);
+                LogError("(OnMapStart) Failed load map in database | " + ex.Message);
+                throw new Exception("Failed load map in database! | " + ex.Message);
             }
         });
     }
@@ -384,8 +382,8 @@ public partial class Gangs
                     await using (var connection = new MySqlConnection(dbConnectionString))
                     {
                         await connection.OpenAsync();
-                        await connection.QueryAsync(@"
-                                UPDATE `gang_group`
+                        await connection.QueryAsync($@"
+                                UPDATE `{Config.Database.TableGroups}`
                                 SET `exp` = @exp
                                 WHERE `id` = @id",
                             new { exp = gang.Exp, id = gang.DatabaseID });
@@ -396,6 +394,11 @@ public partial class Gangs
                     Logger.LogError($"{ex.Message}");
                     throw;
                 }
+                /*finally
+                {
+                    Logger.LogInformation("[Gangs] (OnMapEnd) Clearing GangList");
+                    GangList.Clear();
+                }*/
             });
         }
     }

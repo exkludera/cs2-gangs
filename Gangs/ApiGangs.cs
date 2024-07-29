@@ -17,14 +17,6 @@ namespace Gangs.Api
             dbConnectionString = Gangs.dbConnectionString;
         }
 
-        public bool OnlyTerroristCheck(CCSPlayerController player)
-        {
-            if (_Gangs.Config.OnlyTerrorists && player.Team != CounterStrikeSharp.API.Modules.Utils.CsTeam.Terrorist)
-                return true;
-
-            return false;
-        }
-
         public async Task RegisterSkill(string skillName, int maxLevel, int price)
         {
             await _Gangs.AddSkillInDB(skillName, maxLevel, price);
@@ -71,6 +63,14 @@ namespace Gangs.Api
         public void OnClientBuySkill(CCSPlayerController player, int GangId)
         {
             ClientJoinGang?.Invoke(player, GangId);
+        }
+
+        public bool OnlyTerroristCheck(CCSPlayerController player)
+        {
+            if (_Gangs.Config.Settings.OnlyTerrorists && player.Team != CounterStrikeSharp.API.Modules.Utils.CsTeam.Terrorist)
+                return true;
+
+            return false;
         }
     }
 }

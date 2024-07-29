@@ -62,7 +62,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                             {
                                                 await connection.OpenAsync();
                                                 skill.Level += 1;
-                                                await connection.ExecuteAsync($"UPDATE `gang_perk` SET `{skill.Name}` = {skill.Level} WHERE `gang_id` = {gang.DatabaseID};");
+                                                await connection.ExecuteAsync($"UPDATE `{Config.Database.TablePerks}` SET `{skill.Name}` = {skill.Level} WHERE `gang_id` = {gang.DatabaseID};");
 
                                                 Server.NextFrame(() => {
                                                     StoreApi.GivePlayerCredits(player, -skill.Price);
@@ -79,8 +79,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                     }
                                     catch (Exception ex)
                                     {
-                                        Logger.LogError("{CommandGang} Fail skill gang! | " + ex.Message);
-                                        throw new Exception("[Gangs] Fail skill gang! | " + ex.Message);
+                                        LogError("(CommandGang) Fail skill gang! | " + ex.Message);
+                                        throw new Exception("Fail skill gang! | " + ex.Message);
                                     }
                                 });
                             }, StoreApi.GetPlayerCredits(player) < skill.Price || skill.Level >= skill.MaxLevel);
@@ -107,8 +107,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                 {
                                     await connection.OpenAsync();
 
-                                    await connection.ExecuteAsync(@"
-                                        DELETE FROM `gang_player`
+                                    await connection.ExecuteAsync($@"
+                                        DELETE FROM `{Config.Database.TablePlayers}`
                                         WHERE `id` = @gId;",
                                         new { gId = userInfo[player.Slot].DatabaseID });
 
@@ -123,8 +123,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                             }
                             catch (Exception ex)
                             {
-                                Logger.LogError("{CommandGang} Fail leave gang! | " + ex.Message);
-                                throw new Exception("[Gangs] Fail leave gang! | " + ex.Message);
+                                LogError("(CommandGang) Failed to leave gang! | " + ex.Message);
+                                throw new Exception("Failed to leave gang! | " + ex.Message);
                             }
                         });
                     });
@@ -229,10 +229,10 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                         await using (var connection = new MySqlConnection(dbConnectionString))
                                         {
                                             await connection.OpenAsync();
-                                            var sql = $"INSERT INTO `gang_player` (`gang_id`, `steam_id`, `name`, `gang_hierarchy`, `inviter_name`, `invite_date`) VALUES ({gang.DatabaseID}, '{l_steamId}', '{l_playerName}', 3, '{l_inviterName}', {l_inviteDate});";
+                                            var sql = $"INSERT INTO `{Config.Database.TablePlayers}` (`gang_id`, `steam_id`, `name`, `gang_hierarchy`, `inviter_name`, `invite_date`) VALUES ({gang.DatabaseID}, '{l_steamId}', '{l_playerName}', 3, '{l_inviterName}', {l_inviteDate});";
                                             await connection.ExecuteAsync(sql);
                                             var command = connection.CreateCommand();
-                                            sql = $"SELECT `id` FROM `gang_player` WHERE `steam_id` = '{l_steamId}'";
+                                            sql = $"SELECT `id` FROM `{Config.Database.TablePlayers}` WHERE `steam_id` = '{l_steamId}'";
                                             command.CommandText = sql;
                                             var reader = await command.ExecuteReaderAsync();
 
@@ -260,8 +260,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                     }
                                     catch (Exception ex)
                                     {
-                                        Logger.LogError("{OpenAdminMenu} Failed invite in database | " + ex.Message);
-                                        throw new Exception("[Gangs] Failed invite in database! | " + ex.Message);
+                                        LogError("(OpenAdminMenu) Failed invite in database | " + ex.Message);
+                                        throw new Exception("Failed invite in database! | " + ex.Message);
                                     }
                                 });
                             }
@@ -276,7 +276,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
             else
                 PrintToChat(player, Localizer["chat<no_players>"]);
 
-        }, NeedExtendGang(gang) || (sizeSkill != null && gang.MembersList.Count >= (Config.MaxMembers + sizeSkill.Level)) || gang.MembersList.Count >= Config.MaxMembers);
+        }, NeedExtendGang(gang) || (sizeSkill != null && gang.MembersList.Count >= (Config.Settings.MaxMembers + sizeSkill.Level)) || gang.MembersList.Count >= Config.Settings.MaxMembers);
         if (Config.ExtendCost.Value.Count > 0 && StoreApi != null)
         {
             menu.AddMenuOption(Localizer["menu<extend>"], (player, option) =>
@@ -300,7 +300,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                     {
                                         var addDay = Helper.ConvertUnixToDateTime(gang.EndDate).AddDays(Convert.ToInt32(price.Day));
                                         var newDate = (int)(addDay.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-                                        await connection.ExecuteAsync($"UPDATE `gang_group` SET `end_date` = {newDate} WHERE `id` = {gang.DatabaseID}");
+                                        await connection.ExecuteAsync($"UPDATE `{Config.Database.TableGroups}` SET `end_date` = {newDate} WHERE `id` = {gang.DatabaseID}");
                                         gang.EndDate = newDate;
 
                                         Server.NextFrame(() => {
@@ -312,8 +312,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                             }
                             catch (Exception ex)
                             {
-                                Logger.LogError("{OpenAdminMenu} Failed extend gang! | " + ex.Message);
-                                throw new Exception("[Gangs] Failed extend gang! | " + ex.Message);
+                                LogError("OpenAdminMenu) Failed extend gang! | " + ex.Message);
+                                throw new Exception("Failed extend gang! | " + ex.Message);
                             }
                         });
                     }, StoreApi.GetPlayerCredits(player) < price.Value);
@@ -358,7 +358,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     {
                         await connection.OpenAsync();
                         var command = connection.CreateCommand();
-                        string sql = $"SELECT `id`, `name` FROM `gang_player` WHERE `id` <> {userInfo[player.Slot].DatabaseID} AND `gang_id` = {userInfo[player.Slot].GangId};";
+                        string sql = $"SELECT `id`, `name` FROM `{Config.Database.TablePlayers}` WHERE `id` <> {userInfo[player.Slot].DatabaseID} AND `gang_id` = {userInfo[player.Slot].GangId};";
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
 
@@ -384,7 +384,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                             {
                                                 await connection.OpenAsync();
 
-                                                await connection.ExecuteAsync(@"DELETE FROM `gang_player` WHERE `id` = @gId;",
+                                                await connection.ExecuteAsync($@"DELETE FROM `{Config.Database.TablePlayers}` WHERE `id` = @gId;",
                                                     new { gId = user.Key });
 
                                                 Server.NextFrame(() => {
@@ -405,8 +405,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                         }
                                         catch (Exception ex)
                                         {
-                                            Logger.LogError("{CommandGang} Fail kick from gang! | " + ex.Message);
-                                            throw new Exception("[Gangs] Fail kick from gang! | " + ex.Message);
+                                            LogError("(CommandGang) Fail kick from gang! | " + ex.Message);
+                                            throw new Exception("Fail kick from gang! | " + ex.Message);
                                         }
                                     });
                                 });
@@ -424,8 +424,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("{OpenAdminMenu} Failed check players to kick from gang in database | " + ex.Message);
-                    throw new Exception("[Gangs] Failed check players to kick from gang in database! | " + ex.Message);
+                    LogError("(OpenAdminMenu) Failed check players to kick from gang in database | " + ex.Message);
+                    throw new Exception("Failed check players to kick from gang in database! | " + ex.Message);
                 }
             });
         }, NeedExtendGang(gang));
@@ -444,7 +444,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     {
                         await connection.OpenAsync();
                         var command = connection.CreateCommand();
-                        string sql = $"SELECT `id`, `name` FROM `gang_player` WHERE `id` <> {userInfo[player.Slot].DatabaseID} AND `gang_id` = {userInfo[player.Slot].GangId};";
+                        string sql = $"SELECT `id`, `name` FROM `{Config.Database.TablePlayers}` WHERE `id` <> {userInfo[player.Slot].DatabaseID} AND `gang_id` = {userInfo[player.Slot].GangId};";
                         command.CommandText = sql;
                         var reader = await command.ExecuteReaderAsync();
 
@@ -470,8 +470,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                             {
                                                 await connection.OpenAsync();
 
-                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `gang_hierarchy` = 0 WHERE `id` = {user.Key}");
-                                                await connection.ExecuteAsync($"UPDATE `gang_player` SET `gang_hierarchy` = 1 WHERE `id` = {userInfo[player.Slot].DatabaseID}");
+                                                await connection.ExecuteAsync($"UPDATE `{Config.Database.TablePlayers}` SET `gang_hierarchy` = 0 WHERE `id` = {user.Key}");
+                                                await connection.ExecuteAsync($"UPDATE `{Config.Database.TablePlayers}` SET `gang_hierarchy` = 1 WHERE `id` = {userInfo[player.Slot].DatabaseID}");
 
                                                 userInfo[player.Slot].Rank = 1;
                                                 Server.NextFrame(() => {
@@ -490,8 +490,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                         }
                                         catch (Exception ex)
                                         {
-                                            Logger.LogError("{CommandGang} Fail transfer leader! | " + ex.Message);
-                                            throw new Exception("[Gangs] Fail transfer leader! | " + ex.Message);
+                                            LogError("(CommandGang) Fail transfer leader! | " + ex.Message);
+                                            throw new Exception("Fail transfer leader! | " + ex.Message);
                                         }
                                     });
                                 });
@@ -509,8 +509,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("{OpenAdminMenu} Failed check players to transfer leader in database | " + ex.Message);
-                    throw new Exception("[Gangs] Failed check players to transfer leader in database! | " + ex.Message);
+                    LogError("(OpenAdminMenu) Failed check players to transfer leader in database | " + ex.Message);
+                    throw new Exception("Failed check players to transfer leader in database! | " + ex.Message);
                 }
             });
         }, NeedExtendGang(gang));
@@ -530,11 +530,11 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                             {
                                 await connection.OpenAsync();
 
-                                await connection.ExecuteAsync(@"DELETE FROM `gang_player` WHERE `gang_id` = @gId;", new { gId = gang.DatabaseID });
+                                await connection.ExecuteAsync($@"DELETE FROM `{Config.Database.TablePlayers}` WHERE `gang_id` = @gId;", new { gId = gang.DatabaseID });
 
-                                await connection.ExecuteAsync(@"DELETE FROM `gang_perk` WHERE `gang_id` = @gId;", new { gId = gang.DatabaseID });
+                                await connection.ExecuteAsync($@"DELETE FROM `{Config.Database.TablePerks}` WHERE `gang_id` = @gId;", new { gId = gang.DatabaseID });
 
-                                await connection.ExecuteAsync(@"DELETE FROM `gang_group` WHERE `id` = @gId AND `server_id` = @sId;", new { gId = gang.DatabaseID, sId = Config.ServerId });
+                                await connection.ExecuteAsync($@"DELETE FROM `{Config.Database.TableGroups}` WHERE `id` = @gId AND `server_id` = @sId;", new { gId = gang.DatabaseID });
 
                                 Server.NextFrame(() => {
                                     PrintToChatAll(Localizer["chat<disband_announce>", player.PlayerName, gang.Name]);
@@ -555,8 +555,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         }
                         catch (Exception ex)
                         {
-                            Logger.LogError("{OpenAdminMenu} Failed dissolve in database! | " + ex.Message);
-                            throw new Exception("[Gangs] Failed dissolve in database! | " + ex.Message);
+                            LogError("(OpenAdminMenu) Failed disband in database! | " + ex.Message);
+                            throw new Exception("Failed disband in database! | " + ex.Message);
                         }
                     });
                 });
@@ -585,18 +585,18 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 {
                     await connection.OpenAsync();
 
-                    var countmembers = await connection.QueryAsync(@"
+                    var countmembers = await connection.QueryAsync($@"
                         SELECT COUNT(*) as Count
-                        FROM `gang_player`
+                        FROM `{Config.Database.TablePlayers}`
                         WHERE `gang_id` = @gangid",
                         new { gangid = gang.DatabaseID });
 
                     var data = (IDictionary<string, object>)countmembers.First();
                     var count = data["Count"];
 
-                    var owner = await connection.QueryAsync(@"
+                    var owner = await connection.QueryAsync($@"
                         SELECT `name`
-                        FROM `gang_player`
+                        FROM `{Config.Database.TablePlayers}`
                         WHERE `gang_id` = @gangid AND `gang_hierarchy` = 0",
                         new { gangid = gang.DatabaseID });
 
@@ -607,7 +607,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         var statmenu = new ChatMenu(Localizer["menu<statistic_title>"]);
 
                         int level = GetGangLevel(gang);
-                        int needexp = level * Config.ExpInc + Config.ExpInc;
+                        int needexp = level * Config.Settings.ExpInc + Config.Settings.ExpInc;
 
                         statmenu.AddMenuOption(Localizer["menu<statistic_name>", gang.Name], (player, option) => { }, true);
 

@@ -1,7 +1,6 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using Dapper;
-using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using GangsAPI;
 using CounterStrikeSharp.API.Core.Capabilities;
@@ -13,7 +12,7 @@ namespace Gangs;
 public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 {
     public override string ModuleName => "Gangs";
-    public override string ModuleVersion => "0.1.3";
+    public override string ModuleVersion => "0.1.4";
     public override string ModuleAuthor => "Faust, continued by exkludera";
 
     public GangsConfig Config { get; set; } = new();
@@ -48,7 +47,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 			}
         }
 
-        string[] commands = Config.OpenCommands.Split(';');
+        string[] commands = Config.Settings.MenuCommands.Split(';');
         foreach(var command in commands)
         {
             AddCommand(command, "Open main gang menu", (player, _) => CommandGang(player));
@@ -68,25 +67,25 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         }
         catch (Exception ex)
         {
-            Logger.LogError("{OnAllPluginsLoaded} Fail load StoreApi! | " + ex.Message);
-            throw new Exception("[Gangs] Fail load StoreApi! | " + ex.Message);
+            LogError("(OnAllPluginsLoaded) Fail load StoreApi! | " + ex.Message);
+            throw new Exception("Fail load StoreApi! | " + ex.Message);
         }
     }
 
     public void OnConfigParsed(GangsConfig config)
     {
-		if (config.DatabaseHost.Length < 1 || config.DatabaseName.Length < 1 || config.DatabaseUser.Length < 1)
-			throw new Exception("[CS2-Gangs] You need to setup Database info in config!");
+		if (config.Database.Host.Length < 1 || config.Database.Name.Length < 1 || config.Database.User.Length < 1)
+			throw new Exception("You need to setup Database info in config!");
 
         GangList.Clear();
 
         MySqlConnectionStringBuilder builder = new MySqlConnectionStringBuilder
 		{
-			Server = config.DatabaseHost,
-			Database = config.DatabaseName,
-			UserID = config.DatabaseUser,
-			Password = config.DatabasePassword,
-			Port = (uint)config.DatabasePort
+			Server = config.Database.Host,
+			Database = config.Database.Name,
+			UserID = config.Database.User,
+			Password = config.Database.Password,
+			Port = (uint)config.Database.Port
 		};
 
         dbConnectionString = builder.ConnectionString;
@@ -98,7 +97,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 await using (var connection = new MySqlConnection(dbConnectionString))
                 {
                     connection.Open();
-                    string sql = @"CREATE TABLE IF NOT EXISTS `gang_group` (
+                    string sql = $@"CREATE TABLE IF NOT EXISTS `{Config.Database.TableGroups}` (
                         `id` int(20) NOT NULL AUTO_INCREMENT,
                         `name` varchar(32) NOT NULL,
                         `exp` int(32) NOT NULL DEFAULT 0,
@@ -109,7 +108,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                     ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
                     await connection.ExecuteAsync(sql);
 
-                    sql = @"CREATE TABLE IF NOT EXISTS `gang_player` (
+                    sql = $@"CREATE TABLE IF NOT EXISTS `{Config.Database.TablePlayers}` (
 					    `id` int(20) NOT NULL AUTO_INCREMENT,
                         `gang_id` int(20) NOT NULL,
                         `steam_id` varchar(32) NOT NULL,
@@ -117,15 +116,15 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         `gang_hierarchy` int(16) NOT NULL,
                         `inviter_name` varchar(32) NULL DEFAULT NULL,
                         `invite_date` int(32) NOT NULL,
-                        FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
+                        FOREIGN KEY (gang_id)  REFERENCES {Config.Database.TableGroups} (id),
                         PRIMARY KEY (id)
                     ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
                     await connection.ExecuteAsync(sql);
 
-                    sql = @"CREATE TABLE IF NOT EXISTS `gang_perk` (
+                    sql = $@"CREATE TABLE IF NOT EXISTS `{Config.Database.TablePerks}` (
                         `id` int(20) NOT NULL AUTO_INCREMENT,
                         `gang_id` int(20) NOT NULL,
-                        FOREIGN KEY (gang_id)  REFERENCES gang_group (id),
+                        FOREIGN KEY (gang_id)  REFERENCES {Config.Database.TableGroups} (id),
                         PRIMARY KEY (id)
                     ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
                     await connection.ExecuteAsync(sql);
@@ -133,8 +132,8 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 			}
 			catch (Exception ex)
 			{
-                Logger.LogError("{OnConfigParsed} Unable to connect to database! | " + ex.Message);
-                throw new Exception("[Gangs] Unable to connect to Database! | " + ex.Message);
+                LogError("(OnConfigParsed) Unable to connect to database! | " + ex.Message);
+                throw new Exception("Unable to connect to Database! | " + ex.Message);
 			}
 		});
 

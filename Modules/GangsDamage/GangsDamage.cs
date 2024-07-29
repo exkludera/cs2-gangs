@@ -75,11 +75,11 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
         {
             if (ex.Message == "Invalid function pointer")
             {
-                Logger.LogError($"[GangsDamage] Error in DamageHook: Conflict between cs2fixes");
+                Logger.LogError($"[GangsDamage] (DamageHook) Error: Conflict between cs2fixes");
             }
             else
             {
-                Logger.LogError($"[GangsDamage] Error in DamageHook | {ex.Message}");
+                Logger.LogError($"[GangsDamage] (DamageHook) Error | {ex.Message}");
             }
         }
     }

@@ -19,7 +19,6 @@ public class UserInfo
 
 public record class Gang(
 string name,
-int ServerId,
 int CreateDate,
 int endDate,
 List<UserInfo> MembersList,
