@@ -147,6 +147,9 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         {
             AddTimer(3.0f, () =>
             {
+                if (player == null || !player.IsValid || player.IsBot)
+                    return;
+
                 string originalPlayerName = player.PlayerName;
                 string stripedClanTag = RemovePlayerTags(player.Clan ?? "");
                 string clanTag = (_api!.OnlyTerroristCheck(player) || string.IsNullOrEmpty(gang?.name)) ? "" : $" [{gang.name}]";
