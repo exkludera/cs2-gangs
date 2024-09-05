@@ -14,7 +14,9 @@
     "menu<players>": "Player list",
     "chat<no_players>": "{red}No available players",
 
-	"chat<only_terrorists>": "{red}Only allowed for Terrorists",
+    "chat<only_terrorists>": "{red}Only allowed for Terrorists",
+    
+    "chat<not_enough_credits>": "{red}You don't have enough credits",
 
     //Stats Menu
     "menu<statistic>": "Stats",

@@ -1,4 +1,6 @@
 ﻿using System.Data;
+using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Modules.Menu;
@@ -56,24 +58,33 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                                 {
                                     try
                                     {
-                                        if (skill.Level < skill.MaxLevel)
+                                        if (StoreApi.GetPlayerCredits(player) >= skill.Price)
                                         {
-                                            await using (var connection = new MySqlConnection(dbConnectionString))
+                                            if (skill.Level < skill.MaxLevel)
                                             {
-                                                await connection.OpenAsync();
-                                                skill.Level += 1;
-                                                await connection.ExecuteAsync($"UPDATE `{Config.Database.TablePerks}` SET `{skill.Name}` = {skill.Level} WHERE `gang_id` = {gang.DatabaseID};");
+                                                await using (var connection = new MySqlConnection(dbConnectionString))
+                                                {
+                                                    await connection.OpenAsync();
+                                                    skill.Level += 1;
+                                                    await connection.ExecuteAsync($"UPDATE `{Config.Database.TablePerks}` SET `{skill.Name}` = {skill.Level} WHERE `gang_id` = {gang.DatabaseID};");
 
+                                                    Server.NextFrame(() => {
+                                                        StoreApi.GivePlayerCredits(player, -skill.Price);
+                                                        PrintToChat(player, Localizer["chat<skill_success_buy>", Localizer[skill.Name]]);
+                                                    });
+                                                }
+                                            }
+                                            else
+                                            {
                                                 Server.NextFrame(() => {
-                                                    StoreApi.GivePlayerCredits(player, -skill.Price);
-                                                    PrintToChat(player, Localizer["chat<skill_success_buy>", Localizer[skill.Name]]);
+                                                    PrintToChat(player, Localizer["chat<skill_max_lvl>"]);
                                                 });
                                             }
                                         }
                                         else
                                         {
                                             Server.NextFrame(() => {
-                                                PrintToChat(player, Localizer["chat<skill_max_lvl>"]);
+                                                PrintToChat(player, Localizer["chat<not_enough_credits>"]);
                                             });
                                         }
                                     }
@@ -291,23 +302,33 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                         {
                             try
                             {
-                                await using (var connection = new MySqlConnection(dbConnectionString))
+                                if (StoreApi.GetPlayerCredits(player) >= price.Value)
                                 {
-                                    await connection.OpenAsync();
-
-                                    var gang = GangList.Find(x => x.DatabaseID == userInfo[player.Slot].GangId);
-                                    if (gang != null)
+                                    await using (var connection = new MySqlConnection(dbConnectionString))
                                     {
-                                        var addDay = Helper.ConvertUnixToDateTime(gang.EndDate).AddDays(Convert.ToInt32(price.Day));
-                                        var newDate = (int)(addDay.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
-                                        await connection.ExecuteAsync($"UPDATE `{Config.Database.TableGroups}` SET `end_date` = {newDate} WHERE `id` = {gang.DatabaseID}");
-                                        gang.EndDate = newDate;
+                                        await connection.OpenAsync();
 
-                                        Server.NextFrame(() => {
-                                            StoreApi.GivePlayerCredits(player, -price.Value);
-                                            PrintToChat(player, Localizer["chat<extend_success>"]);
-                                        });
+                                        var gang = GangList.Find(x => x.DatabaseID == userInfo[player.Slot].GangId);
+                                        if (gang != null)
+                                        {
+                                            var addDay = Helper.ConvertUnixToDateTime(gang.EndDate).AddDays(Convert.ToInt32(price.Day));
+                                            var newDate = (int)(addDay.ToUniversalTime() - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+                                            await connection.ExecuteAsync($"UPDATE `{Config.Database.TableGroups}` SET `end_date` = {newDate} WHERE `id` = {gang.DatabaseID}");
+                                            gang.EndDate = newDate;
+
+                                            Server.NextFrame(() =>
+                                            {
+                                                StoreApi.GivePlayerCredits(player, -price.Value);
+                                                PrintToChat(player, Localizer["chat<extend_success>"]);
+                                            });
+                                        }
                                     }
+                                }
+                                else
+                                {
+                                    Server.NextFrame(() => {
+                                        PrintToChat(player, Localizer["chat<not_enough_credits>"]);
+                                    });
                                 }
                             }
                             catch (Exception ex)
