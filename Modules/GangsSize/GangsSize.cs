@@ -1,13 +1,10 @@
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using GangsAPI;
 
-namespace GangsSize;
-
-public class GangsSize : BasePlugin, IPluginConfig<SizeConfig>
+public class Plugin : BasePlugin, IPluginConfig<SizeConfig>
 {
     public override string ModuleName => "Gangs Size";
     public override string ModuleVersion => "1.0";
@@ -34,7 +31,7 @@ public class GangsSize : BasePlugin, IPluginConfig<SizeConfig>
 
     public override void Load(bool hotReload)
     {
-        if(hotReload)
+        if (hotReload)
         {
             _api = GangsApi.Capability.Get();
             if (_api == null) return;
@@ -55,9 +52,7 @@ public class GangsSize : BasePlugin, IPluginConfig<SizeConfig>
 }
 public class SizeConfig : BasePluginConfig
 {
-    [JsonPropertyName("MaxLevel")]
     public int MaxLevel { get; set; } = 10;
-    [JsonPropertyName("Price")]
     public int Price { get; set; } = 250;
 }
 internal class Helper

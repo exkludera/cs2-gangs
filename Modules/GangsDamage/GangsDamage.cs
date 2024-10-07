@@ -1,21 +1,14 @@
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Memory;
-using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using GangsAPI;
-using Microsoft.Extensions.Logging;
 
-namespace GangsDamage;
-
-public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
+public class Plugin : BasePlugin, IPluginConfig<DamageConfig>
 {
     public override string ModuleName => "Gangs Damage";
     public override string ModuleVersion => "1.0";
-    public override string ModuleAuthor => "Faust & exkludera";
+    public override string ModuleAuthor => "exkludera";
 
     private string moduleName = "damage";
     private GangsApi? _api;
@@ -38,18 +31,21 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
 
     public override void Load(bool hotReload)
     {
-        if(hotReload)
+        if (hotReload)
         {
             _api = GangsApi.Capability.Get();
             if (_api == null) return;
             _api.RegisterSkill(moduleName, Config.MaxLevel, Config.Price);
         }
-        AddTimer(1.0f, DamageHook);
+
+        RegisterEventHandler<EventPlayerHurt>(EventPlayerHurt, HookMode.Pre);
     }
 
     public override void Unload(bool hotReload)
     {
         _api?.UnRegisterSkill(moduleName);
+
+        DeregisterEventHandler<EventPlayerHurt>(EventPlayerHurt, HookMode.Pre);
     }
 
     public void OnConfigParsed(DamageConfig config)
@@ -58,41 +54,9 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
         Helper.UpdateConfig(config);
     }
 
-    public void DamageHook()
+    HookResult EventPlayerHurt(EventPlayerHurt @event, GameEventInfo info)
     {
-        try
-        {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Hook(this.OnTakeDamage, HookMode.Pre);
-            }
-            //else
-            //{
-            //    RegisterEventHandler<EventPlayerHurt>(OnPlayerHurt, HookMode.Pre);
-            //}
-        }
-        catch (Exception ex)
-        {
-            if (ex.Message == "Invalid function pointer")
-            {
-                Logger.LogError($"[GangsDamage] (DamageHook) Error: Conflict between cs2fixes");
-            }
-            else
-            {
-                Logger.LogError($"[GangsDamage] (DamageHook) Error | {ex.Message}");
-            }
-        }
-    }
-    HookResult OnTakeDamage(DynamicHook hook)
-    {
-        CEntityInstance ent = hook.GetParam<CEntityInstance>(0);
-
-        if (ent.DesignerName != "player")
-            return HookResult.Continue;
-
-        CTakeDamageInfo damageInfo = hook.GetParam<CTakeDamageInfo>(1);
-        var attacker = damageInfo.Attacker.Value!.As<CBasePlayerPawn>().Controller.Value;
-        var player = Utilities.GetPlayerFromIndex((int)attacker!.Index);
+        var player = @event.Attacker;
 
         if (player == null || _api == null) return HookResult.Continue;
         if (!player.IsValid || player.IsBot) return HookResult.Continue;
@@ -106,14 +70,15 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
         var damageValue = level * Config.Value;
         if (damageValue <= 0) return HookResult.Continue;
 
-        CCSWeaponBase? ccsWeaponBase = damageInfo.Ability.Value?.As<CCSWeaponBase>();
+        CCSWeaponBase? ccsWeaponBase = player.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value?.As<CCSWeaponBase>();
         if (ccsWeaponBase != null && ccsWeaponBase.IsValid)
         {
+
             CCSWeaponBaseVData? weaponData = ccsWeaponBase.VData;
             if (weaponData == null || weaponData.GearSlot != gear_slot_t.GEAR_SLOT_KNIFE)
                 return HookResult.Continue;
 
-            damageInfo.Damage += damageValue;
+            @event.Userid!.PlayerPawn.Value!.Health -=damageValue;
         }
 
         return HookResult.Continue;
@@ -121,11 +86,8 @@ public class GangsDamage : BasePlugin, IPluginConfig<DamageConfig>
 }
 public class DamageConfig : BasePluginConfig
 {
-    [JsonPropertyName("MaxLevel")]
     public int MaxLevel { get; set; } = 10;
-    [JsonPropertyName("Price")]
     public int Price { get; set; } = 250;
-    [JsonPropertyName("Value")]
     public int Value { get; set; } = 2;
 }
 internal class Helper

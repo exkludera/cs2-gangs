@@ -1,18 +1,15 @@
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using GangsAPI;
 
-namespace GangsSpeed;
-
-public class GangsSpeed : BasePlugin, IPluginConfig<SpeedConfig>
+public class Plugin : BasePlugin, IPluginConfig<SpeedConfig>
 {
     public override string ModuleName => "Gangs Speed";
     public override string ModuleVersion => "1.0";
-    public override string ModuleAuthor => "Faust & verneri";
+    public override string ModuleAuthor => "verneri";
 
     private string moduleName = "speed";
     private GangsApi? _api;
@@ -35,7 +32,7 @@ public class GangsSpeed : BasePlugin, IPluginConfig<SpeedConfig>
 
     public override void Load(bool hotReload)
     {
-        if(hotReload)
+        if (hotReload)
         {
             _api = GangsApi.Capability.Get();
             if (_api == null) return;
@@ -57,14 +54,11 @@ public class GangsSpeed : BasePlugin, IPluginConfig<SpeedConfig>
     [GameEventHandler]
     public HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
-        if (@event.Userid!.Handle == IntPtr.Zero || @event.Userid.UserId == null)
-            return HookResult.Continue;
-        
         var player = @event.Userid;
 
         if (player == null || _api == null) return HookResult.Continue;
-        if(!player.IsValid || player.IsBot) return HookResult.Continue;
-        if(player.Connected != PlayerConnectedState.PlayerConnected) return HookResult.Continue;
+        if (!player.IsValid || player.IsBot) return HookResult.Continue;
+        if (player.Connected != PlayerConnectedState.PlayerConnected) return HookResult.Continue;
 
         if (_api.OnlyTerroristCheck(player))
             return HookResult.Continue;
@@ -76,20 +70,19 @@ public class GangsSpeed : BasePlugin, IPluginConfig<SpeedConfig>
         var SpeedValue = level * Config.Value;
 
         if (SpeedValue <= 0 || playerPawn == null) return HookResult.Continue;
+
         AddTimer(0.1f, ()=>{
             playerPawn.VelocityModifier = 1.0f + SpeedValue;
             Utilities.SetStateChanged(player, "CCSPlayerPawn", "m_flVelocityModifier");
         });
+
         return HookResult.Continue;
     }
 }
 public class SpeedConfig : BasePluginConfig
 {
-    [JsonPropertyName("MaxLevel")]
     public int MaxLevel { get; set; } = 10;
-    [JsonPropertyName("Price")]
     public int Price { get; set; } = 250;
-    [JsonPropertyName("Value")]
     public float Value { get; set; } = 0.015f;
 }
 internal class Helper

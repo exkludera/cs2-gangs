@@ -1,21 +1,20 @@
 ﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using Dapper;
-using MySqlConnector;
-using GangsAPI;
-using CounterStrikeSharp.API.Core.Capabilities;
-using StoreApi;
 using CounterStrikeSharp.API.Core.Translations;
+using CounterStrikeSharp.API.Core.Capabilities;
+using MySqlConnector;
+using Dapper;
+using GangsAPI;
+using StoreApi;
 
 namespace Gangs;
 
-public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
+public partial class Gangs : BasePlugin, IPluginConfig<Config>
 {
     public override string ModuleName => "Gangs";
-    public override string ModuleVersion => "0.1.4";
+    public override string ModuleVersion => "0.1.5";
     public override string ModuleAuthor => "Faust, continued by exkludera";
-
-    public GangsConfig Config { get; set; } = new();
+    public static Gangs Instance { get; set; } = new();
 
     internal string dbConnectionString = string.Empty;
 
@@ -30,33 +29,41 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
 
     public override void Load(bool hotReload)
     {
+        Instance = this;
+
         _api = new Api.ApiGangs(this); 
         Capabilities.RegisterPluginCapability(_pluginCapability, () => _api);
         Server.NextWorldUpdate(() => _api.OnCoreReady());
 
         RegisterEvents();
 
-        if(hotReload)
-        {
-            OnMapStart(string.Empty);
-            
-			foreach(var player in Utilities.GetPlayers())
-			{
-				if(player.AuthorizedSteamID != null)
-					OnClientAuthorized(player.Slot, player.AuthorizedSteamID);
-			}
-        }
-
         string[] commands = Config.Settings.MenuCommands.Split(';');
         foreach(var command in commands)
         {
-            AddCommand(command, "Open main gang menu", (player, _) => CommandGang(player));
+            AddCommand(command, "Open gang menu", Menu.Command_OpenMenus!);
+        }
+
+        if (hotReload)
+        {
+            OnMapStart(string.Empty);
+
+            foreach (var player in Utilities.GetPlayers())
+            {
+                if (player.AuthorizedSteamID != null)
+                    OnClientAuthorized(player.Slot, player.AuthorizedSteamID);
+            }
         }
     }
 
     public override void Unload(bool hotReload)
     {
         UnregisterEvents();
+
+        string[] commands = Config.Settings.MenuCommands.Split(';');
+        foreach (var command in commands)
+        {
+            RemoveCommand(command, Menu.Command_OpenMenus!);
+        }
     }
 
     public override void OnAllPluginsLoaded(bool hotReload)
@@ -72,9 +79,10 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
         }
     }
 
-    public void OnConfigParsed(GangsConfig config)
-    {
-		if (config.Database.Host.Length < 1 || config.Database.Name.Length < 1 || config.Database.User.Length < 1)
+    public Config Config { get; set; } = new Config();
+    public void OnConfigParsed(Config config)
+    {        
+        if (config.Database.Host.Length < 1 || config.Database.Name.Length < 1 || config.Database.User.Length < 1)
 			throw new Exception("You need to setup Database info in config!");
 
         GangList.Clear();

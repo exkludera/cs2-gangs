@@ -1,18 +1,15 @@
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using GangsAPI;
 
-namespace GangsGravity;
-
-public class GangsGravity : BasePlugin, IPluginConfig<GravityConfig>
+public class Plugin : BasePlugin, IPluginConfig<GravityConfig>
 {
     public override string ModuleName => "Gangs Gravity";
     public override string ModuleVersion => "1.0";
-    public override string ModuleAuthor => "Faust & verneri";
+    public override string ModuleAuthor => "verneri";
 
     private string moduleName = "gravity";
     private GangsApi? _api;
@@ -35,7 +32,7 @@ public class GangsGravity : BasePlugin, IPluginConfig<GravityConfig>
 
     public override void Load(bool hotReload)
     {
-        if(hotReload)
+        if (hotReload)
         {
             _api = GangsApi.Capability.Get();
             if (_api == null) return;
@@ -57,9 +54,6 @@ public class GangsGravity : BasePlugin, IPluginConfig<GravityConfig>
     [GameEventHandler]
     public HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
-        if (@event.Userid!.Handle == IntPtr.Zero || @event.Userid.UserId == null)
-            return HookResult.Continue;
-        
         var player = @event.Userid;
 
         if (player == null || _api == null) return HookResult.Continue;
@@ -76,19 +70,18 @@ public class GangsGravity : BasePlugin, IPluginConfig<GravityConfig>
         var AddedGravity = level * Config.Value;
 
         if (AddedGravity <= 0 || playerPawn == null) return HookResult.Continue;
+
         AddTimer(0.1f, ()=>{
             playerPawn.GravityScale = 1.0f - AddedGravity;
         });
+
         return HookResult.Continue;
     }
 }
 public class GravityConfig : BasePluginConfig
 {
-    [JsonPropertyName("MaxLevel")]
     public int MaxLevel { get; set; } = 10;
-    [JsonPropertyName("Price")]
     public int Price { get; set; } = 250;
-    [JsonPropertyName("Value")]
     public float Value { get; set; } = 0.015f;
 }
 internal class Helper

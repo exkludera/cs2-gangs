@@ -13,16 +13,6 @@ namespace Gangs;
 
 public partial class Gangs
 {
-    private void UnregisterEvents()
-    {
-        RemoveCommandListener("say", OnCommandSay, HookMode.Pre);
-        RemoveCommandListener("say_team", OnCommandSay, HookMode.Pre);
-
-        RemoveListener<Listeners.OnMapStart>(OnMapStart);
-        RemoveListener<Listeners.OnMapEnd>(OnMapEnd);
-        RemoveListener<Listeners.OnClientAuthorized>(OnClientAuthorized);
-    }
-
     private void RegisterEvents()
     {
         AddCommandListener("say", OnCommandSay, HookMode.Pre);
@@ -32,36 +22,23 @@ public partial class Gangs
         RegisterListener<Listeners.OnMapEnd>(OnMapEnd);
         RegisterListener<Listeners.OnClientAuthorized>(OnClientAuthorized);
 
-        RegisterEventHandler<EventPlayerSpawn>((@event, info) =>
-        {
-            AddScoreboardTagToPlayer(@event.Userid!);
+        RegisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
+        RegisterEventHandler<EventPlayerDeath>(EventPlayerDeath);
+        RegisterEventHandler<EventPlayerDisconnect>(EventPlayerDisconnect);
+    }
 
-            return HookResult.Continue;
-        });
+    private void UnregisterEvents()
+    {
+        RemoveCommandListener("say", OnCommandSay, HookMode.Pre);
+        RemoveCommandListener("say_team", OnCommandSay, HookMode.Pre);
 
-        RegisterEventHandler<EventPlayerDeath>((@event, info) =>
-        {
-            var player = @event.Attacker;
+        RemoveListener<Listeners.OnMapStart>(OnMapStart);
+        RemoveListener<Listeners.OnMapEnd>(OnMapEnd);
+        RemoveListener<Listeners.OnClientAuthorized>(OnClientAuthorized);
 
-            if (player == null || !player.IsValid || player.IsBot)
-                return HookResult.Continue;
-
-            AddScoreboardTagToPlayer(@event.Userid!);
-
-            var slot = player.Slot;
-
-            var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
-
-            if (gang == null)
-                return HookResult.Continue;
-
-            if (NeedExtendGang(gang))
-                return HookResult.Continue;
-
-            gang.Exp += 1;
-
-            return HookResult.Continue;
-        });
+        DeregisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
+        DeregisterEventHandler<EventPlayerDeath>(EventPlayerDeath);
+        DeregisterEventHandler<EventPlayerDisconnect>(EventPlayerDisconnect);
     }
 
     public void OnClientAuthorized(int playerSlot, SteamID steamID)
@@ -131,25 +108,6 @@ public partial class Gangs
                 throw new Exception("Failed get info in database! | " + ex.Message);
             }
         });
-    }
-
-    [GameEventHandler]
-    public HookResult OnClientDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
-    {
-        CCSPlayerController? player = @event.Userid;
-
-        if (player is null
-            || string.IsNullOrEmpty(player.IpAddress)
-            || player.IpAddress.Contains("127.0.0.1")
-            || player.IsBot
-            || player.IsHLTV
-            || !player.UserId.HasValue
-        )
-            return HookResult.Continue;
-
-        Array.Clear(userInfo, player.Slot, 1);
-
-        return HookResult.Continue;
     }
 
     public HookResult OnCommandSay(CCSPlayerController? player, CommandInfo info)
@@ -272,13 +230,29 @@ public partial class Gangs
 
                                 var gang = GangList.Find(x => x.DatabaseID == userInfo[player.Slot].GangId);
 
-                                if (gang != null) gang.Name = message;
+                                if (gang != null)
+                                {
+                                    gang.Name = message;
+
+                                    Server.NextFrame(() =>
+                                    {
+                                        var players = Utilities.GetPlayers().Where(p => !p.IsBot);
+                                        foreach (var player in players)
+                                        {
+                                            if (gang.DatabaseID == userInfo[player.Slot].GangId)
+                                            {
+                                                player.Clan = "";
+                                                Utilities.SetStateChanged(player, "CCSPlayerController", "m_szClan");
+                                            }
+                                        }
+                                    });
+                                }
+
                                 userInfo[player.Slot].Status = 0;
 
                                 if (Config.RenameCost > 0)
-                                {
                                     if (StoreApi != null) StoreApi.GivePlayerCredits(player, -Config.RenameCost);
-                                }
+
                                 Server.NextFrame(() =>
                                 {
                                     PrintToChatAll(Localizer["chat<rename_success>", playerName, message]);
@@ -401,5 +375,55 @@ public partial class Gangs
                 }*/
             });
         }
+    }
+
+    public HookResult EventPlayerSpawn(EventPlayerSpawn @event, GameEventInfo @eventInfo)
+    {
+        AddScoreboardTagToPlayer(@event.Userid!);
+
+        return HookResult.Continue;
+    }
+
+    public HookResult EventPlayerDeath(EventPlayerDeath @event, GameEventInfo @eventInfo)
+    {
+
+        var player = @event.Attacker;
+
+        if (player == null || !player.IsValid || player.IsBot)
+            return HookResult.Continue;
+
+        AddScoreboardTagToPlayer(@event.Userid!);
+
+        var slot = player.Slot;
+
+        var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
+
+        if (gang == null)
+            return HookResult.Continue;
+
+        if (NeedExtendGang(gang))
+            return HookResult.Continue;
+
+        gang.Exp += 1;
+
+        return HookResult.Continue;
+    }
+
+    public HookResult EventPlayerDisconnect(EventPlayerDisconnect @event, GameEventInfo info)
+    {
+        CCSPlayerController? player = @event.Userid;
+
+        if (player is null
+            || string.IsNullOrEmpty(player.IpAddress)
+            || player.IpAddress.Contains("127.0.0.1")
+            || player.IsBot
+            || player.IsHLTV
+            || !player.UserId.HasValue
+        )
+            return HookResult.Continue;
+
+        Array.Clear(userInfo, player.Slot, 1);
+
+        return HookResult.Continue;
     }
 }

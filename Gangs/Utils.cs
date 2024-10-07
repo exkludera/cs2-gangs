@@ -7,11 +7,11 @@ using Dapper;
 
 namespace Gangs;
 
-public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
+public partial class Gangs : BasePlugin, IPluginConfig<Config>
 {
     public void LogError(string message)
     {
-        Logger.LogError($"[GangsDamage] {message}");
+        Logger.LogError($"[Gangs] {message}");
     }
 
     public void PrintToChat(CCSPlayerController player, string message)
@@ -150,30 +150,15 @@ public partial class Gangs : BasePlugin, IPluginConfig<GangsConfig>
                 if (player == null || !player.IsValid || player.IsBot)
                     return;
 
-                string originalPlayerName = player.PlayerName;
                 string stripedClanTag = RemovePlayerTags(player.Clan ?? "");
-                string clanTag = (_api!.OnlyTerroristCheck(player) || string.IsNullOrEmpty(gang?.name)) ? "" : $" [{gang.name}]";
+                string clanTag = (_api!.OnlyTerroristCheck(player) || string.IsNullOrEmpty(gang?.Name)) ? "" : $" [{gang.Name}]";
 
                 player.Clan = stripedClanTag + clanTag;
-                player.PlayerName = originalPlayerName + " ";
 
                 AddTimer(0.1f, () =>
                 {
                     if (player.IsValid)
-                    {
                         Utilities.SetStateChanged(player, "CCSPlayerController", "m_szClan");
-                        Utilities.SetStateChanged(player, "CBasePlayerController", "m_iszPlayerName");
-                    }
-                });
-
-                AddTimer(0.2f, () =>
-                {
-                    if (player.IsValid) player.PlayerName = originalPlayerName;
-                });
-
-                AddTimer(0.3f, () =>
-                {
-                    if (player.IsValid) Utilities.SetStateChanged(player, "CBasePlayerController", "m_iszPlayerName");
                 });
             });
         }

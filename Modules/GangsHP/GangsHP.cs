@@ -1,14 +1,11 @@
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
 using CounterStrikeSharp.API.Core.Attributes.Registration;
 using GangsAPI;
 
-namespace GangsHP;
-
-public class GangsHP : BasePlugin, IPluginConfig<HPConfig>
+public class Plugin : BasePlugin, IPluginConfig<HPConfig>
 {
     public override string ModuleName => "Gangs HP";
     public override string ModuleVersion => "1.0";
@@ -35,7 +32,7 @@ public class GangsHP : BasePlugin, IPluginConfig<HPConfig>
 
     public override void Load(bool hotReload)
     {
-        if(hotReload)
+        if (hotReload)
         {
             _api = GangsApi.Capability.Get();
             if (_api == null) return;
@@ -57,9 +54,6 @@ public class GangsHP : BasePlugin, IPluginConfig<HPConfig>
     [GameEventHandler]
     public HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
-        if (@event.Userid!.Handle == IntPtr.Zero || @event.Userid.UserId == null)
-            return HookResult.Continue;
-        
         var player = @event.Userid;
 
         if (player == null || _api == null) return HookResult.Continue;
@@ -76,21 +70,20 @@ public class GangsHP : BasePlugin, IPluginConfig<HPConfig>
         var healthValue = level * Config.Value;
 
         if (healthValue <= 0 || playerPawn == null) return HookResult.Continue;
+
         AddTimer(0.1f, ()=>{
             playerPawn.Health += healthValue;
             playerPawn.MaxHealth += healthValue;
             Utilities.SetStateChanged(playerPawn, "CBaseEntity", "m_iHealth");
         });
+
         return HookResult.Continue;
     }
 }
 public class HPConfig : BasePluginConfig
 {
-    [JsonPropertyName("MaxLevel")]
     public int MaxLevel { get; set; } = 10;
-    [JsonPropertyName("Price")]
     public int Price { get; set; } = 250;
-    [JsonPropertyName("Value")]
     public int Value { get; set; } = 2;
 }
 internal class Helper
