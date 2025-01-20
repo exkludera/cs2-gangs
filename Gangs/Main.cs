@@ -112,7 +112,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<Config>
                         `create_date` int(32) NOT NULL,
                         `end_date` int(32) NOT NULL,
                         PRIMARY KEY (id)
-                    ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+                    ) DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1;";
                     await connection.ExecuteAsync(sql);
 
                     sql = $@"CREATE TABLE IF NOT EXISTS `{Config.Database.TablePlayers}` (
@@ -125,7 +125,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<Config>
                         `invite_date` int(32) NOT NULL,
                         FOREIGN KEY (gang_id)  REFERENCES {Config.Database.TableGroups} (id),
                         PRIMARY KEY (id)
-                    ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+                    ) DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1;";
                     await connection.ExecuteAsync(sql);
 
                     sql = $@"CREATE TABLE IF NOT EXISTS `{Config.Database.TablePerks}` (
@@ -133,7 +133,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<Config>
                         `gang_id` int(20) NOT NULL,
                         FOREIGN KEY (gang_id)  REFERENCES {Config.Database.TableGroups} (id),
                         PRIMARY KEY (id)
-                    ) DEFAULT CHARSET=utf8 AUTO_INCREMENT=1;";
+                    ) DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1;";
                     await connection.ExecuteAsync(sql);
                 }
 			}

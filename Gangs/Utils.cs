@@ -31,7 +31,7 @@ public partial class Gangs : BasePlugin, IPluginConfig<Config>
             await using (var connection = new MySqlConnection(dbConnectionString))
             {
                 await connection.OpenAsync();
-                string checkColumnSql = $"SELECT COUNT(*) FROM information_schema.columns WHERE table_name = '{Config.Database.TablePerks}' AND column_name = '{skillName}';";
+                string checkColumnSql = $"SELECT COUNT(*) FROM information_schema.columns WHERE TABLE_SCHEMA = '{Config.Database.Name}' AND table_name = '{Config.Database.TablePerks}' AND column_name = '{skillName}';";
                 var checkColumnCommand = connection.CreateCommand();
                 checkColumnCommand.CommandText = checkColumnSql;
                 int columnExists = Convert.ToInt32(await checkColumnCommand.ExecuteScalarAsync());
