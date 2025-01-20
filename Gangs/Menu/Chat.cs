@@ -555,7 +555,7 @@ public class MenuChat
 
                                 await connection.ExecuteAsync($@"DELETE FROM `{Instance.Config.Database.TablePerks}` WHERE `gang_id` = @gId;", new { gId = gang.DatabaseID });
 
-                                await connection.ExecuteAsync($@"DELETE FROM `{Instance.Config.Database.TableGroups}` WHERE `id` = @gId AND `server_id` = @sId;", new { gId = gang.DatabaseID });
+                                await connection.ExecuteAsync($@"DELETE FROM `{Instance.Config.Database.TableGroups}` WHERE `id` = @gId;", new { gId = gang.DatabaseID });
 
                                 Server.NextFrame(() => {
                                     Instance.PrintToChatAll(Instance.Localizer["chat<disband_announce>", player.PlayerName, gang.Name]);

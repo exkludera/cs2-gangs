@@ -109,7 +109,6 @@ public partial class Gangs : BasePlugin, IPluginConfig<Config>
                         `id` int(20) NOT NULL AUTO_INCREMENT,
                         `name` varchar(32) NOT NULL,
                         `exp` int(32) NOT NULL DEFAULT 0,
-                        `server_id` int(16) NOT NULL DEFAULT 0,
                         `create_date` int(32) NOT NULL,
                         `end_date` int(32) NOT NULL,
                         PRIMARY KEY (id)
