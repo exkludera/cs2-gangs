@@ -1,0 +1,4 @@
+{
+  "chat<prefix>": "{blue}[Gangs]{default}",
+  "chat<salary>": "{green}You have received a salary: {default}${0} {green}from {default}{1}"
+}

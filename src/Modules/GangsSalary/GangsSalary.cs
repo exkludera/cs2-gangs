@@ -1,13 +1,13 @@
+using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Core.Attributes.Registration;
 using GangsAPI;
 using StoreApi;
 
 public class Config : BasePluginConfig
 {
-    public int MaxLevel { get; set; } = 20;
-    public int Price { get; set; } = 1;
-    public int Value { get; set; } = 1;
+    public int MaxLevel { get; set; } = 10;
+    public int Price { get; set; } = 250;
+    public int Value { get; set; } = 5;
 }
 
 public class Plugin : BasePlugin, IPluginConfig<Config>
@@ -46,6 +46,8 @@ public class Plugin : BasePlugin, IPluginConfig<Config>
 
     public override void Load(bool hotReload)
     {
+        RegisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
+
         if (hotReload)
         {
             _api = GangsApi.Capability.Get();
@@ -56,38 +58,33 @@ public class Plugin : BasePlugin, IPluginConfig<Config>
 
     public override void Unload(bool hotReload)
     {
+        DeregisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
+
         _api?.UnRegisterSkill(moduleName);
     }
     
-    [GameEventHandler]
-    public HookResult OnPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
+    public HookResult EventPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
     {
         var player = @event.Userid;
 
-        if (player == null)
-            return HookResult.Continue;
-
-        GiveSalary(player);
-
-        return HookResult.Continue;
-    }
-
-    public void GiveSalary(CCSPlayerController player)
-    {
-        if (player == null || _api == null) return;
-        if (!player.IsValid || player.IsBot) return;
-        if (player.Connected != PlayerConnectedState.PlayerConnected) return;
-
-        if (_api.OnlyTerroristCheck(player))
-            return;
+        if (player == null || _api == null) return HookResult.Continue;
+        if (!player.IsValid || player.IsBot) return HookResult.Continue;
+        if (_api.OnlyTerroristCheck(player)) return HookResult.Continue;
 
         var level = _api.GetSkillLevel(player, moduleName);
+        int value = level * Config.Value;
+        if (value <= 0) return HookResult.Continue;
 
-        int salary = level * Config.Value;
+        if (StoreApi == null) return HookResult.Continue;
 
-        AddTimer(0.1f, () => {
-            StoreApi!.GivePlayerCredits(player, salary);
-            player.PrintToChat($"[salary] You have received ${salary} from your gang");
+        int gangid = _api.GetGangId(player);
+        string gangname = _api.GetGangName(gangid);
+
+        Server.NextFrame(() => {
+            StoreApi.GivePlayerCredits(player, value);
+            player.PrintToChat($"{Localizer["chat<prefix>"]} {Localizer["chat<salary>", value, gangname]}");
         });
+
+        return HookResult.Continue;
     }
 }
