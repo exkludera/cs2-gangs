@@ -16,7 +16,9 @@
 
 > [!IMPORTANT]
 > FORK FROM [baferpro/Guild](https://github.com/baferpro/Guild)
+> 
 > requires [schwarper/cs2-store](https://github.com/schwarper/cs2-store)
+> 
 > requires [schwarper/cs2-tags](https://github.com/schwarper/cs2-tags)
 
 <img src="https://github.com/user-attachments/assets/53e486cc-8da4-45ab-bc6e-eb38145aba36" height="200px"> <br>
