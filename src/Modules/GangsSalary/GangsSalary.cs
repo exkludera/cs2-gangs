@@ -1,5 +1,6 @@
 using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Timers;
 using GangsAPI;
 using StoreApi;
 
@@ -8,6 +9,7 @@ public class Config : BasePluginConfig
     public int MaxLevel { get; set; } = 10;
     public int Price { get; set; } = 250;
     public int Value { get; set; } = 5;
+    public float Seconds { get; set; } = 500;
 }
 
 public class Plugin : BasePlugin, IPluginConfig<Config>
@@ -46,7 +48,7 @@ public class Plugin : BasePlugin, IPluginConfig<Config>
 
     public override void Load(bool hotReload)
     {
-        RegisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
+        RegisterListener<Listeners.OnMapStart>(OnMapStart);
 
         if (hotReload)
         {
@@ -58,33 +60,39 @@ public class Plugin : BasePlugin, IPluginConfig<Config>
 
     public override void Unload(bool hotReload)
     {
-        DeregisterEventHandler<EventPlayerSpawn>(EventPlayerSpawn);
+        RemoveListener<Listeners.OnMapStart>(OnMapStart);
 
         _api?.UnRegisterSkill(moduleName);
     }
     
-    public HookResult EventPlayerSpawn(EventPlayerSpawn @event, GameEventInfo info)
+    void OnMapStart(string mapname)
     {
-        var player = @event.Userid;
+        AddTimer(Config.Seconds, Salary, TimerFlags.REPEAT | TimerFlags.STOP_ON_MAPCHANGE);
+    }
 
-        if (player == null || _api == null) return HookResult.Continue;
-        if (!player.IsValid || player.IsBot) return HookResult.Continue;
-        if (_api.OnlyTerroristCheck(player)) return HookResult.Continue;
+    void Salary()
+    {
+        var players = Utilities.GetPlayers();
 
-        var level = _api.GetSkillLevel(player, moduleName);
-        int value = level * Config.Value;
-        if (value <= 0) return HookResult.Continue;
+        foreach (var player in players)
+        {
+            if (player == null || _api == null) continue;
+            if (!player.IsValid || player.IsBot) continue;
+            if (_api.OnlyTerroristCheck(player)) continue;
 
-        if (StoreApi == null) return HookResult.Continue;
+            var level = _api.GetSkillLevel(player, moduleName);
+            int value = level * Config.Value;
+            if (value <= 0) continue;
 
-        int gangid = _api.GetGangId(player);
-        string gangname = _api.GetGangName(gangid);
+            if (StoreApi == null) continue;
 
-        Server.NextFrame(() => {
-            StoreApi.GivePlayerCredits(player, value);
-            player.PrintToChat($"{Localizer["chat<prefix>"]} {Localizer["chat<salary>", value, gangname]}");
-        });
+            int gangid = _api.GetGangId(player);
+            string gangname = _api.GetGangName(gangid);
 
-        return HookResult.Continue;
+            Server.NextFrame(() => {
+                StoreApi.GivePlayerCredits(player, value);
+                player.PrintToChat($"{Localizer["chat<prefix>"]} {Localizer["chat<salary>", value, gangname]}");
+            });
+        }
     }
 }
