@@ -149,7 +149,7 @@ public class MenuHTML
                 menu.AddMenuOption(Instance.Localizer["menu<top>"], (player, option) =>
                 {
                     var topGangsMenu = new CenterHtmlMenu(Instance.Localizer["menu<top>"], Instance);
-                    var Gangs = from gang in Instance.GangList orderby gang.Exp select gang;
+                    var Gangs = from gang in Instance.GangList orderby gang.Exp descending select gang;
 
                     foreach (var gang in Gangs)
                     {
