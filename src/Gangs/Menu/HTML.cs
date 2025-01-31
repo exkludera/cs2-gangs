@@ -264,7 +264,8 @@ public class MenuHTML
                                                 Server.NextFrame(() => {
                                                     Instance.PrintToChat(invited, Instance.Localizer["chat<invite_welcome>", gang.Name]);
                                                     Instance.PrintToChat(inviter, Instance.Localizer["chat<invite_accept>", invited.PlayerName]);
-                                                    Instance.AddScoreboardTagToPlayer(player);
+                                                    Instance.AddScoreboardTagToPlayer(invited);
+                                                    MenuManager.CloseActiveMenu(invited);
                                                 });
                                             }
                                         }
