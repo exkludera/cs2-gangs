@@ -120,7 +120,7 @@ public partial class Plugin : BasePlugin, IPluginConfig<Config>
                     sql = $@"CREATE TABLE IF NOT EXISTS `{Config.Database.TablePlayers}` (
 					    `id` int(20) NOT NULL AUTO_INCREMENT,
                         `gang_id` int(20) NOT NULL,
-                        `steam_id` int(17) NOT NULL,
+                        `steam_id` bigint(17) NOT NULL,
                         `name` varchar(32) NOT NULL,
                         `gang_hierarchy` int(16) NOT NULL,
                         `inviter_name` varchar(32) NULL DEFAULT NULL,

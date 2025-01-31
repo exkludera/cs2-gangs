@@ -379,15 +379,17 @@ public partial class Plugin
 
     HookResult EventPlayerDeath(EventPlayerDeath @event, GameEventInfo @eventInfo)
     {
-
-        var player = @event.Attacker;
+        var player = @event.Userid;
 
         if (player == null || !player.IsValid || player.IsBot)
             return HookResult.Continue;
 
-        var slot = player.Slot;
+        var attacker = @event.Attacker;
 
-        var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
+        if (attacker == null || !attacker.IsValid || attacker.IsBot)
+            return HookResult.Continue;
+
+        var gang = GangList.Find(x => x.DatabaseID == userInfo[attacker.Slot].GangId);
 
         if (gang == null)
             return HookResult.Continue;
