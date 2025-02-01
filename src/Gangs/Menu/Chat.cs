@@ -187,6 +187,24 @@ public class MenuChat
                     Instance.PrintToChat(player, Instance.Localizer["chat<create_name>"]);
                 });
             }
+
+            menu.AddMenuOption(Instance.Localizer["menu<top>"], (player, option) =>
+            {
+                var topGangsMenu = new ChatMenu(Instance.Localizer["menu<top>"]);
+                var Gangs = from gang in Instance.GangList orderby gang.Exp descending select gang;
+
+                foreach (var gang in Gangs)
+                {
+                    topGangsMenu.AddMenuOption(Instance.Localizer["menu<top_info>", gang.Name, Instance.GetGangLevel(gang)], (player, option) =>
+                    {
+                        OpenStatisticMenu(player, gang);
+                    });
+                }
+
+                topGangsMenu.ExitButton = true;
+
+                MenuManager.OpenChatMenu(player, topGangsMenu);
+            });
         }
 
         if (menu.MenuOptions.Count == 0)
