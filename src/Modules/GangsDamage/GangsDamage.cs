@@ -40,7 +40,7 @@ public class Plugin : BasePlugin, IPluginConfig<Config>
 
     public override void Load(bool hotReload)
     {
-        RegisterEventHandler<EventPlayerHurt>(EventPlayerHurt, HookMode.Pre);
+        VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Hook(this.OnTakeDamage, HookMode.Pre);
 
         if (hotReload)
         {
@@ -52,33 +52,41 @@ public class Plugin : BasePlugin, IPluginConfig<Config>
 
     public override void Unload(bool hotReload)
     {
-        DeregisterEventHandler<EventPlayerHurt>(EventPlayerHurt, HookMode.Pre);
+        VirtualFunctions.CBaseEntity_TakeDamageOldFunc.Unhook(this.OnTakeDamage, HookMode.Pre);
 
         _api?.UnRegisterSkill(moduleName);
     }
 
-    HookResult EventPlayerHurt(EventPlayerHurt @event, GameEventInfo info)
+    public HookResult OnTakeDamage(DynamicHook hook)
     {
-        var player = @event.Attacker;
+        var damageInfo = hook.GetParam<CTakeDamageInfo>(1);
 
-        if (player == null || _api == null) return HookResult.Continue;
-        if (!player.IsValid || player.IsBot) return HookResult.Continue;
+        var attacker = damageInfo.Attacker.Value;
+        if (attacker == null || _api == null) return HookResult.Continue;
+
+        var pawnController = new CCSPlayerPawn(attacker.Handle).Controller.Value;
+        if (pawnController == null) return HookResult.Continue;
+
+        var player = new CCSPlayerController(pawnController.Handle);
+        if (!player.IsValid) return HookResult.Continue;
+
         if (_api.OnlyTerroristCheck(player)) return HookResult.Continue;
-
         var level = _api.GetSkillLevel(player, moduleName);
         var value = level * Config.Value;
         if (value <= 0) return HookResult.Continue;
 
-        CCSWeaponBase? ccsWeaponBase = player.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value?.As<CCSWeaponBase>();
-        if (ccsWeaponBase != null && ccsWeaponBase.IsValid)
-        {
-            CCSWeaponBaseVData? weaponData = ccsWeaponBase.VData;
-            if (weaponData == null || weaponData.GearSlot != gear_slot_t.GEAR_SLOT_KNIFE)
+            CCSWeaponBase? ccsWeaponBase = player.PlayerPawn.Value?.WeaponServices?.ActiveWeapon.Value?.As<CCSWeaponBase>();
+            if (ccsWeaponBase != null && ccsWeaponBase.IsValid)
+            {
+                CCSWeaponBaseVData? weaponData = ccsWeaponBase.VData;
+                if (weaponData == null || weaponData.GearSlot != gear_slot_t.GEAR_SLOT_KNIFE)
+                    return HookResult.Continue;
+
+                damageInfo.Damage += level;
+
                 return HookResult.Continue;
-
-            @event.Userid!.PlayerPawn.Value!.Health -= value;
-        }
-
+            }
+        
         return HookResult.Continue;
     }
 }
