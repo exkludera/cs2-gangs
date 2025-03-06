@@ -1,4 +1,6 @@
 using CounterStrikeSharp.API.Core;
+using CounterStrikeSharp.API.Modules.Memory;
+using CounterStrikeSharp.API.Modules.Memory.DynamicFunctions;
 using GangsAPI;
 
 public class Config : BasePluginConfig
