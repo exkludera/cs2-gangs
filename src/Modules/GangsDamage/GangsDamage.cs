@@ -82,7 +82,7 @@ public class Plugin : BasePlugin, IPluginConfig<Config>
                 if (weaponData == null || weaponData.GearSlot != gear_slot_t.GEAR_SLOT_KNIFE)
                     return HookResult.Continue;
 
-                damageInfo.Damage += level;
+                damageInfo.Damage += value;
 
                 return HookResult.Continue;
             }
