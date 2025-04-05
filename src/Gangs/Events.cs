@@ -208,7 +208,13 @@ public partial class Plugin
                                             InviteDate = createDate
                                         };
                                         var gang = GangList.Find(x => x.DatabaseID == userInfo[slot].GangId);
-                                        if (gang != null) gang.MembersList.Add(userInfo[slot]);
+
+                                        if (gang != null)
+                                        {
+                                            gang.MembersList.Add(userInfo[slot]);
+                                            gang.MembersCount++;
+                                        }
+
                                         if (Config.CreateCost.Value > 0)
                                         {
                                             if (StoreApi != null) StoreApi.GivePlayerCredits(player, -Config.CreateCost.Value);
@@ -289,7 +295,8 @@ public partial class Plugin
                                 new(),
                                 new(),
                                 reader.GetInt32(3),
-                                reader.GetInt32(4)
+                                reader.GetInt32(4),
+                                GetMembersCount(reader.GetInt32(4))
                             ));
                         }
                     }

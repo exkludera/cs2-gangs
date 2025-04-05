@@ -1,4 +1,6 @@
-.vscode/
 .vs/
 **/obj
 **/bin
+src/Gangs/Properties/PublishProfiles/FolderProfile.pubxml.user
+src/Gangs/Properties/PublishProfiles/FolderProfile.pubxml
+src/Gangs/Gangs.csproj.user

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using Dapper;
 using TagsApi;
+using CounterStrikeSharp.API.Modules.Commands.Targeting;
 
 namespace Gangs;
 
@@ -159,25 +160,24 @@ public partial class Plugin
                 if (target == null)
                     continue;
 
-                TagApi.ResetPlayerTag(target, Tags.Tags_Tags.ScoreTag);
-
-                Server.NextFrame(() => {
-                    string oldTag = TagApi.GetPlayerTag(target, Tags.Tags_Tags.ScoreTag);
-
-                    TagApi.SetPlayerTag(target, Tags.Tags_Tags.ScoreTag, oldTag + gangTag);
-                });
+                SetClanTag(target, gangTag);
             }
         }
-        else
-        {
-            TagApi.ResetPlayerTag(player, Tags.Tags_Tags.ScoreTag);
+        else SetClanTag(player, gangTag);
+    }
 
-            Server.NextFrame(() => {
-                string oldTag = TagApi.GetPlayerTag(player, Tags.Tags_Tags.ScoreTag);
+    private void SetClanTag(CCSPlayerController player, string tag)
+    {
+        if (TagApi == null)
+            return;
 
-                TagApi.SetPlayerTag(player, Tags.Tags_Tags.ScoreTag, oldTag + gangTag);
-            });
-        }
+        TagApi.ResetAttribute(player, Tags.TagType.ScoreTag);
+
+        Server.NextFrame(() => {
+            string oldTag = TagApi.GetAttribute(player, Tags.TagType.ScoreTag) ?? "";
+
+            TagApi.SetAttribute(player, Tags.TagType.ScoreTag, oldTag + tag);
+        });
     }
 
     public int GetMembersCount(int gang_id)

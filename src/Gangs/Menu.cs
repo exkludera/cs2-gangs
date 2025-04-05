@@ -1,31 +1,40 @@
-﻿using System.Data;
-using CounterStrikeSharp.API;
+﻿using CounterStrikeSharp.API;
 using CounterStrikeSharp.API.Core;
-using CounterStrikeSharp.API.Modules.Menu;
+using CounterStrikeSharp.API.Modules.Commands;
+using MySqlConnector;
+using System.Data;
 using Dapper;
 using Microsoft.Extensions.Logging;
-using MySqlConnector;
+using CS2MenuManager.API.Class;
+using CS2MenuManager.API.Enum;
 
 namespace Gangs;
 
-public class MenuHTML
+public static partial class Menu
 {
     private static Plugin Instance = Plugin.Instance;
+    private static string MenuType = Instance.Config.Settings.MenuType;
 
-    static public void Open(CCSPlayerController? player)
+    [CommandHelper(minArgs: 0, whoCanExecute: CommandUsage.CLIENT_ONLY)]
+    public static void Command_OpenMenus(CCSPlayerController player, CommandInfo info)
     {
-        if (player == null || !player.IsValid || player.IsBot)
-            return;
-
         if (Instance._api!.OnlyTerroristCheck(player))
         {
             Instance.PrintToChat(player, Instance.Localizer["chat<only_terrorists>"]);
             return;
         }
 
+        Open(player);
+    }
+
+    static public void Open(CCSPlayerController? player)
+    {
+        if (player == null || !player.IsValid || player.IsBot)
+            return;
+
         var slot = player.Slot;
 
-        var menu = new CenterHtmlMenu(Instance.Localizer["menu<title>"], Instance);
+        var menu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<title>"], Instance);
 
         if (Instance.userInfo[slot].DatabaseID != -1)
         {
@@ -40,19 +49,19 @@ public class MenuHTML
                 else
                     menu.Title = Instance.Localizer["menu<title_with_name>", gang.Name];
 
-                menu.AddMenuOption(Instance.Localizer["menu<statistic>"], (player, option) => {
+                menu.AddItem(Instance.Localizer["menu<statistic>"], (player, option) => {
                     OpenStatisticMenu(player, gang);
                 });
 
-                menu.AddMenuOption(Instance.Localizer["menu<skills>"], (player, option) =>
+                menu.AddItem(Instance.Localizer["menu<skills>"], (player, option) =>
                 {
-                    var skillsMenu = new CenterHtmlMenu(Instance.Localizer["menu<skills>"], Instance);
+                    var skillsMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<skills>"], Instance);
 
                     foreach (var skill in gang.SkillList)
                     {
                         if (Instance.StoreApi != null)
                         {
-                            skillsMenu.AddMenuOption(Instance.Localizer["menu<skill_info>", Instance.Localizer[skill.Name], skill.Level, skill.MaxLevel, skill.Price], (player, option) =>
+                            skillsMenu.AddItem(Instance.Localizer["menu<skill_info>", Instance.Localizer[skill.Name], skill.Level, skill.MaxLevel, skill.Price], (player, option) =>
                             {
                                 Task.Run(async () =>
                                 {
@@ -94,21 +103,23 @@ public class MenuHTML
                                         throw new Exception("Fail skill gang! | " + ex.Message);
                                     }
                                 });
-                            }, Instance.StoreApi.GetPlayerCredits(player) < skill.Price || skill.Level >= skill.MaxLevel);
+                            }, (Instance.StoreApi.GetPlayerCredits(player) < skill.Price || skill.Level >= skill.MaxLevel) ? DisableOption.DisableShowNumber : DisableOption.None);
                         }
                     }
+                    skillsMenu.Display(player, 0);
+                }, (Instance.NeedExtendGang(gang) ? DisableOption.DisableShowNumber : DisableOption.None));
 
-                    MenuManager.OpenCenterHtmlMenu(Instance, player, skillsMenu);
-                }, Instance.NeedExtendGang(gang));
-
-                menu.AddMenuOption(Instance.Localizer["menu<leader_panel>"], (player, option) => {
-                    OpenAdminMenu(player);
-                }, Instance.userInfo[slot].Rank == 0 ? false : true);
-
-                menu.AddMenuOption(Instance.Localizer["menu<leave>"], (player, option) =>
+                if (Instance.userInfo[slot].Rank == 0)
                 {
-                    var acceptMenu = new CenterHtmlMenu(Instance.Localizer["menu<leave_accept>"], Instance);
-                    acceptMenu.AddMenuOption(Instance.Localizer["Yes"], (player, option) =>
+                    menu.AddItem(Instance.Localizer["menu<leader_panel>"], (player, option) => {
+                        OpenAdminMenu(player);
+                    });
+                }
+
+                menu.AddItem(Instance.Localizer["menu<leave>"], (player, option) =>
+                {
+                    var acceptMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<leave_accept>"], Instance);
+                    acceptMenu.AddItem(Instance.Localizer["Yes"], (player, option) =>
                     {
                         Task.Run(async () =>
                         {
@@ -139,21 +150,21 @@ public class MenuHTML
                             }
                         });
                     });
-                    acceptMenu.AddMenuOption(Instance.Localizer["No"], (invited, option) => {
-                        MenuManager.OpenCenterHtmlMenu(Instance, player, menu);
+                    acceptMenu.AddItem(Instance.Localizer["No"], (invited, option) => {
+                        menu.Display(player, 0);
                     });
 
-                    MenuManager.OpenCenterHtmlMenu(Instance, player, acceptMenu);
-                }, Instance.userInfo[slot].Rank > 0 ? false : true);
+                    acceptMenu.Display(player, 0);
+                }, Instance.userInfo[slot].Rank > 0 ? DisableOption.None : DisableOption.DisableShowNumber);
 
-                menu.AddMenuOption(Instance.Localizer["menu<top>"], (player, option) =>
+                menu.AddItem(Instance.Localizer["menu<top>"], (player, option) =>
                 {
-                    var topGangsMenu = new CenterHtmlMenu(Instance.Localizer["menu<top>"], Instance);
+                    var topGangsMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<top>"], Instance);
                     var Gangs = from gang in Instance.GangList orderby gang.Exp descending select gang;
 
                     foreach (var gang in Gangs)
                     {
-                        topGangsMenu.AddMenuOption(Instance.Localizer["menu<top_info>", gang.Name, Instance.GetGangLevel(gang)], (player, option) =>
+                        topGangsMenu.AddItem(Instance.Localizer["menu<top_info>", gang.Name, Instance.GetGangLevel(gang)], (player, option) =>
                         {
                             OpenStatisticMenu(player, gang);
                         });
@@ -161,7 +172,7 @@ public class MenuHTML
 
                     topGangsMenu.ExitButton = true;
 
-                    MenuManager.OpenCenterHtmlMenu(Instance, player, topGangsMenu);
+                    topGangsMenu.Display(player, 0);
                 });
             }
         }
@@ -172,30 +183,30 @@ public class MenuHTML
             {
                 if (Instance.StoreApi != null)
                 {
-                    menu.AddMenuOption(Instance.Localizer["menu<create_with_credits>", Instance.Config.CreateCost.Value], (player, option) =>
+                    menu.AddItem(Instance.Localizer["menu<create_with_credits>", Instance.Config.CreateCost.Value], (player, option) =>
                     {
                         Instance.userInfo[slot].Status = 1;
                         Instance.PrintToChat(player, Instance.Localizer["chat<create_name>"]);
-                    }, Instance.StoreApi.GetPlayerCredits(player) < Instance.Config.CreateCost.Value);
+                    }, Instance.StoreApi.GetPlayerCredits(player) < Instance.Config.CreateCost.Value ? DisableOption.DisableShowNumber : DisableOption.None);
                 }
             }
             else
             {
-                menu.AddMenuOption(Instance.Localizer["menu<create>"], (player, option) =>
+                menu.AddItem(Instance.Localizer["menu<create>"], (player, option) =>
                 {
                     Instance.userInfo[slot].Status = 1;
                     Instance.PrintToChat(player, Instance.Localizer["chat<create_name>"]);
                 });
             }
 
-            menu.AddMenuOption(Instance.Localizer["menu<top>"], (player, option) =>
+            menu.AddItem(Instance.Localizer["menu<top>"], (player, option) =>
             {
-                var topGangsMenu = new CenterHtmlMenu(Instance.Localizer["menu<top>"], Instance);
+                var topGangsMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<top>"], Instance);
                 var Gangs = from gang in Instance.GangList orderby gang.Exp descending select gang;
 
                 foreach (var gang in Gangs)
                 {
-                    topGangsMenu.AddMenuOption(Instance.Localizer["menu<top_info>", gang.Name, Instance.GetGangLevel(gang)], (player, option) =>
+                    topGangsMenu.AddItem(Instance.Localizer["menu<top_info>", gang.Name, Instance.GetGangLevel(gang)], (player, option) =>
                     {
                         OpenStatisticMenu(player, gang);
                     });
@@ -203,14 +214,14 @@ public class MenuHTML
 
                 topGangsMenu.ExitButton = true;
 
-                MenuManager.OpenCenterHtmlMenu(Instance, player, topGangsMenu);
+                topGangsMenu.Display(player, 0);
             });
         }
 
-        if (menu.MenuOptions.Count == 0)
-            menu.AddMenuOption(Instance.Localizer["Oops"], (player, option) => { }, true);
+        //if (menu.ItemOptions.Count == 0)
+        //    menu.AddItem(Instance.Localizer["Oops"], (player, option) => { }, true);
 
-        MenuManager.OpenCenterHtmlMenu(Instance, player, menu);
+        menu.Display(player, 0);
     }
     static public void OpenAdminMenu(CCSPlayerController? player)
     {
@@ -223,13 +234,19 @@ public class MenuHTML
         if (gang == null)
             return;
 
-        var menu = new CenterHtmlMenu(Instance.Localizer["menu<title_with_name>", gang.Name], Instance);
+        var menu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<title_with_name>", gang.Name], Instance);
 
         var sizeSkill = gang.SkillList.Find(x => x.Name.Equals("size"));
 
-        menu.AddMenuOption(Instance.Localizer["menu<invite>"], (player, option) =>
+        menu.AddItem(Instance.Localizer["menu<invite>"], (player, option) =>
         {
-            var usersMenu = new CenterHtmlMenu(Instance.Localizer["menu<players>"], Instance);
+            if ((sizeSkill != null && gang.MembersCount >= (Instance.Config.Settings.MaxMembers + sizeSkill.Level)) || gang.MembersCount >= Instance.Config.Settings.MaxMembers)
+            {
+                Instance.PrintToChat(player, Instance.Localizer["chat<invite_full>", gang.MembersCount, Instance.Config.Settings.MaxMembers]);
+                return;
+            }
+
+            var usersMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<players>"], Instance);
 
             foreach (var user in Utilities.GetPlayers())
             {
@@ -238,12 +255,12 @@ public class MenuHTML
 
                 if (Instance.userInfo[user.Slot].DatabaseID == -1)
                 {
-                    usersMenu.AddMenuOption($"{user.PlayerName}", (inviter, option) =>
+                    usersMenu.AddItem($"{user.PlayerName}", (inviter, option) =>
                     {
                         Instance.PrintToChat(inviter, Instance.Localizer["chat<invite_sent>", user.PlayerName]);
-                        var acceptMenu = new CenterHtmlMenu(Instance.Localizer["menu<invite_came>", gang.Name], Instance);
+                        var acceptMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<invite_came>", gang.Name], Instance);
 
-                        acceptMenu.AddMenuOption(Instance.Localizer["Accept"], (invited, option) =>
+                        acceptMenu.AddItem(Instance.Localizer["Accept"], (invited, option) =>
                         {
                             if (invited.AuthorizedSteamID != null)
                             {
@@ -279,6 +296,7 @@ public class MenuHTML
                                                 };
                                                 reader.Close();
                                                 gang.MembersList.Add(Instance.userInfo[user.Slot]);
+                                                gang.MembersCount++;
                                                 Server.NextFrame(() => {
                                                     Instance.PrintToChat(invited, Instance.Localizer["chat<invite_welcome>", gang.Name]);
                                                     Instance.PrintToChat(inviter, Instance.Localizer["chat<invite_accept>", invited.PlayerName]);
@@ -297,25 +315,30 @@ public class MenuHTML
                             }
                         });
                         acceptMenu.ExitButton = true;
-                        MenuManager.OpenCenterHtmlMenu(Instance, user, acceptMenu);
+                        acceptMenu.Display(user, 0);
                     });
                 }
             }
-            if (usersMenu.MenuOptions.Count > 0)
-                MenuManager.OpenCenterHtmlMenu(Instance, player, usersMenu);
-            else
-                Instance.PrintToChat(player, Instance.Localizer["chat<no_players>"]);
+            if (usersMenu.ItemOptions.Count > 0)
+                usersMenu.Display(player, 0);
 
-        }, Instance.NeedExtendGang(gang) || (sizeSkill != null && gang.MembersList.Count >= (Instance.Config.Settings.MaxMembers + sizeSkill.Level)) || gang.MembersList.Count >= Instance.Config.Settings.MaxMembers);
+            else Instance.PrintToChat(player, Instance.Localizer["chat<no_players>"]);
+
+        }, (Instance.NeedExtendGang(gang) ||
+            (sizeSkill != null && gang.MembersCount >= (Instance.Config.Settings.MaxMembers + sizeSkill.Level)) ||
+            gang.MembersCount >= Instance.Config.Settings.MaxMembers)
+            ? DisableOption.DisableShowNumber
+            : DisableOption.None);
+
         if (Instance.Config.ExtendCost.Value.Count > 0 && Instance.StoreApi != null)
         {
-            menu.AddMenuOption(Instance.Localizer["menu<extend>"], (player, option) =>
+            menu.AddItem(Instance.Localizer["menu<extend>"], (player, option) =>
             {
-                var pricesMenu = new CenterHtmlMenu(Instance.Localizer["menu<extend_date>"], Instance);
+                var pricesMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<extend_date>"], Instance);
 
                 foreach (var price in Instance.Config.ExtendCost.Value)
                 {
-                    pricesMenu.AddMenuOption(Instance.Localizer["menu<extend_select_date>", price.Day, price.Value], (player, option) =>
+                    pricesMenu.AddItem(Instance.Localizer["menu<extend_select_date>", price.Day, price.Value], (player, option) =>
                     {
                         Task.Run(async () =>
                         {
@@ -356,11 +379,11 @@ public class MenuHTML
                                 throw new Exception("Failed extend gang! | " + ex.Message);
                             }
                         });
-                    }, Instance.StoreApi.GetPlayerCredits(player) < price.Value);
+                    }, Instance.StoreApi.GetPlayerCredits(player) < price.Value ? DisableOption.DisableShowNumber : DisableOption.None);
                 }
 
                 pricesMenu.ExitButton = true;
-                MenuManager.OpenCenterHtmlMenu(Instance, player, pricesMenu);
+                pricesMenu.Display(player, 0);
             });
         }
 
@@ -368,25 +391,25 @@ public class MenuHTML
         {
             if (Instance.StoreApi != null)
             {
-                menu.AddMenuOption(Instance.Localizer["menu<rename_with_credits>", Instance.Config.RenameCost], (player, option) =>
+                menu.AddItem(Instance.Localizer["menu<rename_with_credits>", Instance.Config.RenameCost], (player, option) =>
                 {
                     Instance.userInfo[slot].Status = 2;
                     Instance.PrintToChat(player, Instance.Localizer["chat<rename>"]);
-                }, Instance.NeedExtendGang(gang) || Instance.StoreApi.GetPlayerCredits(player) < Instance.Config.RenameCost);
+                }, (Instance.NeedExtendGang(gang) || Instance.StoreApi.GetPlayerCredits(player) < Instance.Config.RenameCost) ? DisableOption.DisableShowNumber : DisableOption.None);
             }
         }
         else
         {
-            menu.AddMenuOption(Instance.Localizer["menu<rename>"], (player, option) =>
+            menu.AddItem(Instance.Localizer["menu<rename>"], (player, option) =>
             {
                 Instance.userInfo[slot].Status = 2;
                 Instance.PrintToChat(player, Instance.Localizer["chat<rename>"]);
-            }, Instance.NeedExtendGang(gang));
+            }, Instance.NeedExtendGang(gang) ? DisableOption.DisableShowNumber : DisableOption.None);
         }
 
-        menu.AddMenuOption(Instance.Localizer["menu<kick>"], (player, option) =>
+        menu.AddItem(Instance.Localizer["menu<kick>"], (player, option) =>
         {
-            var usersMenu = new CenterHtmlMenu(Instance.Localizer["menu<players>"], Instance);
+            var usersMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<players>"], Instance);
 
             Dictionary<int, string> users = new Dictionary<int, string>();
 
@@ -411,10 +434,10 @@ public class MenuHTML
 
                         foreach (var user in users)
                         {
-                            usersMenu.AddMenuOption($"{user.Value}", (player, option) =>
+                            usersMenu.AddItem($"{user.Value}", (player, option) =>
                             {
-                                var acceptMenu = new CenterHtmlMenu(Instance.Localizer["menu<kick_sure>", user.Value], Instance);
-                                acceptMenu.AddMenuOption(Instance.Localizer["Yes"], (player, option) =>
+                                var acceptMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<kick_sure>", user.Value], Instance);
+                                acceptMenu.AddItem(Instance.Localizer["Yes"], (player, option) =>
                                 {
                                     Task.Run(async () =>
                                     {
@@ -450,14 +473,14 @@ public class MenuHTML
                                         }
                                     });
                                 });
-                                acceptMenu.AddMenuOption(Instance.Localizer["No"], (invited, option) => {
-                                    MenuManager.OpenCenterHtmlMenu(Instance, player, menu);
+                                acceptMenu.AddItem(Instance.Localizer["No"], (invited, option) => {
+                                    menu.Display(player, 0);
                                 });
-                                MenuManager.OpenCenterHtmlMenu(Instance, player, acceptMenu);
+                                acceptMenu.Display(player, 0);
                             });
                         }
                         Server.NextFrame(() => {
-                            if (usersMenu.MenuOptions.Count > 0) MenuManager.OpenCenterHtmlMenu(Instance, player, usersMenu);
+                            if (usersMenu.ItemOptions.Count > 0) usersMenu.Display(player, 0);
                             else Instance.PrintToChat(player, Instance.Localizer["chat<no_players>"]);
                         });
                     }
@@ -468,11 +491,11 @@ public class MenuHTML
                     throw new Exception("Failed check players to kick from gang in database! | " + ex.Message);
                 }
             });
-        }, Instance.NeedExtendGang(gang));
+        }, Instance.NeedExtendGang(gang) ? DisableOption.DisableShowNumber : DisableOption.None);
 
-        menu.AddMenuOption(Instance.Localizer["menu<leader>"], (player, option) =>
+        menu.AddItem(Instance.Localizer["menu<leader>"], (player, option) =>
         {
-            var usersMenu = new CenterHtmlMenu(Instance.Localizer["menu<players>"], Instance);
+            var usersMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<players>"], Instance);
 
             Dictionary<int, string> users = new Dictionary<int, string>();
 
@@ -497,10 +520,10 @@ public class MenuHTML
 
                         foreach (var user in users)
                         {
-                            usersMenu.AddMenuOption($"{user.Value}", (player, option) =>
+                            usersMenu.AddItem($"{user.Value}", (player, option) =>
                             {
-                                var acceptMenu = new CenterHtmlMenu(Instance.Localizer["menu<leader_sure>", user.Value], Instance);
-                                acceptMenu.AddMenuOption(Instance.Localizer["Yes"], (player, option) =>
+                                var acceptMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<leader_sure>", user.Value], Instance);
+                                acceptMenu.AddItem(Instance.Localizer["Yes"], (player, option) =>
                                 {
                                     Task.Run(async () =>
                                     {
@@ -535,14 +558,14 @@ public class MenuHTML
                                         }
                                     });
                                 });
-                                acceptMenu.AddMenuOption(Instance.Localizer["No"], (invited, option) => {
-                                    MenuManager.OpenCenterHtmlMenu(Instance, player, menu);
+                                acceptMenu.AddItem(Instance.Localizer["No"], (invited, option) => {
+                                    menu.Display(player, 0);
                                 });
-                                MenuManager.OpenCenterHtmlMenu(Instance, player, acceptMenu);
+                                acceptMenu.Display(player, 0);
                             });
                         }
                         Server.NextFrame(() => {
-                            if (usersMenu.MenuOptions.Count > 0) MenuManager.OpenCenterHtmlMenu(Instance, player, usersMenu);
+                            if (usersMenu.ItemOptions.Count > 0) usersMenu.Display(player, 0);
                             else Instance.PrintToChat(player, Instance.Localizer["chat<no_players>"]);
                         });
                     }
@@ -553,14 +576,14 @@ public class MenuHTML
                     throw new Exception("Failed check players to transfer leader in database! | " + ex.Message);
                 }
             });
-        }, Instance.NeedExtendGang(gang));
+        }, Instance.NeedExtendGang(gang) ? DisableOption.DisableShowNumber : DisableOption.None);
         if (Instance.userInfo[slot].Rank == 0)
         {
-            menu.AddMenuOption(Instance.Localizer["menu<disband>"], (player, option) =>
+            menu.AddItem(Instance.Localizer["menu<disband>"], (player, option) =>
             {
-                var confirmMenu = new CenterHtmlMenu(Instance.Localizer["Sure"], Instance);
+                var confirmMenu = MenuManager.MenuByType(MenuType, Instance.Localizer["Sure"], Instance);
 
-                confirmMenu.AddMenuOption(Instance.Localizer["Yes"], (player, option) =>
+                confirmMenu.AddItem(Instance.Localizer["Yes"], (player, option) =>
                 {
                     Task.Run(async () =>
                     {
@@ -601,15 +624,15 @@ public class MenuHTML
                     });
                 });
 
-                confirmMenu.AddMenuOption(Instance.Localizer["Cancel"], (player, option) => {
-                    MenuManager.OpenCenterHtmlMenu(Instance, player, menu);
+                confirmMenu.AddItem(Instance.Localizer["Cancel"], (player, option) => {
+                    menu.Display(player, 0);
                 });
 
-                MenuManager.OpenCenterHtmlMenu(Instance, player, confirmMenu);
+                confirmMenu.Display(player, 0);
             });
         }
         menu.ExitButton = true;
-        MenuManager.OpenCenterHtmlMenu(Instance, player, menu);
+        menu.Display(player, 0);
     }
 
     static public void OpenStatisticMenu(CCSPlayerController? player, Gang gang)
@@ -644,26 +667,26 @@ public class MenuHTML
                     var name = data["name"];
 
                     Server.NextFrame(() => {
-                        var statmenu = new CenterHtmlMenu(Instance.Localizer["menu<statistic_title>"], Instance);
+                        var statmenu = MenuManager.MenuByType(MenuType, Instance.Localizer["menu<statistic_title>"], Instance);
 
                         int level = Instance.GetGangLevel(gang);
                         int needexp = level * Instance.Config.Settings.ExpInc + Instance.Config.Settings.ExpInc;
 
-                        statmenu.AddMenuOption(Instance.Localizer["menu<statistic_name>", gang.Name], (player, option) => { }, true);
+                        statmenu.AddItem(Instance.Localizer["menu<statistic_name>", gang.Name], (player, option) => { }, DisableOption.DisableHideNumber);
 
-                        statmenu.AddMenuOption(Instance.Localizer["menu<statistic_leader>", name], (player, option) => { }, true);
+                        statmenu.AddItem(Instance.Localizer["menu<statistic_leader>", name], (player, option) => { }, DisableOption.DisableHideNumber);
 
-                        statmenu.AddMenuOption(Instance.Localizer["menu<statistic_num_players>", count], (player, option) => { }, true);
+                        statmenu.AddItem(Instance.Localizer["menu<statistic_num_players>", count], (player, option) => { }, DisableOption.DisableHideNumber);
 
-                        statmenu.AddMenuOption(Instance.Localizer["menu<statistic_lvl>", level, gang.Exp, needexp], (player, option) => { }, true);
+                        statmenu.AddItem(Instance.Localizer["menu<statistic_lvl>", level, gang.Exp, needexp], (player, option) => { }, DisableOption.DisableHideNumber);
 
                         DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
                         dateTime = dateTime.AddSeconds(gang.CreateDate).ToLocalTime();
                         var date = dateTime.ToString("dd.MM.yyyy") + " " + dateTime.ToString("HH:mm");
 
-                        statmenu.AddMenuOption(Instance.Localizer["menu<statistic_create_date>", date], (player, option) => { }, true);
+                        statmenu.AddItem(Instance.Localizer["menu<statistic_create_date>", date], (player, option) => { }, DisableOption.DisableHideNumber);
 
-                        MenuManager.OpenCenterHtmlMenu(Instance, player, statmenu);
+                        statmenu.Display(player, 0);
                     });
                 }
             }

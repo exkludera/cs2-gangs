@@ -22,7 +22,7 @@ public class Config : BasePluginConfig
     public class Config_Settings
     {
         public string MenuCommands { get; set; } = "css_gangs;css_gang";
-        public string MenuType { get; set; } = "chat";
+        public string MenuType { get; set; } = "ChatMenu";
         public int MaxMembers { get; set; } = 10;
         public int ExpInc { get; set; } = 100;
         public bool ClanTags { get; set; } = true;

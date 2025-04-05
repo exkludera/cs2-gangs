@@ -18,12 +18,14 @@ public record class Gang(
     List<UserInfo> MembersList,
     List<Skill> SkillList,
     int exp = 0,
-    int DatabaseID = -1
+    int DatabaseID = -1,
+    int MembersCount = 0
 )
 {
     public string Name { get; set; } = name;
     public int Exp { get; set; } = exp;
     public int EndDate { get; set; } = endDate;
+    public int MembersCount { get; set; } = MembersCount;
 };
 
 public record class Skill(

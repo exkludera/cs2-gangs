@@ -69,6 +69,8 @@
   "chat<invite_welcome>": "Welcome to {red}{0}",
   "chat<invite_accept>": "{lightpurple}{0} {default}has accepted the invitation",
 
+  "chat<invite_full>": "Gang is already full! ({0}/{1})",
+
   //Disband
   "menu<disband>": "Disband gang",
   "chat<disband_announce>": "{lightpurple}{0} {default}disbanded the gang {red}{1}",
