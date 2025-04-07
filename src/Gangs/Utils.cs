@@ -180,33 +180,29 @@ public partial class Plugin
         });
     }
 
-    public int GetMembersCount(int gang_id)
+    public async Task<int> GetMembersCount(int gang_id)
     {
-        int iCount = 0;
-        Task.Run(async () =>
+        try
         {
-            try
+            await using (var connection = new MySqlConnection(dbConnectionString))
             {
-                await using (var connection = new MySqlConnection(dbConnectionString))
-                {
-                    await connection.OpenAsync();
+                await connection.OpenAsync();
 
-                    var countmembers = await connection.QueryAsync($@"
-                    SELECT COUNT(*) as Count FROM `{Config.Database.TablePlayers}` WHERE `gang_id` = @gangid",
-                        new { gangid = gang_id });
-                    var data = (IDictionary<string, object>)countmembers.First();
-                    var count = data["Count"];
+                var countmembers = await connection.QueryAsync($@"
+                SELECT COUNT(*) as Count FROM `{Config.Database.TablePlayers}` WHERE `gang_id` = @gangid",
+                    new { gangid = gang_id });
 
-                    iCount = (int)count;
-                }
+                var data = (IDictionary<string, object>)countmembers.First();
+                var count = Convert.ToInt32(data["Count"]);
+
+                return count;
             }
-            catch (Exception ex)
-            {
-                LogError("(GetMembersCount) Failed get value in database | " + ex.Message);
-                throw new Exception("Failed get value in database! | " + ex.Message);
-            }
-        });
-        return iCount;
+        }
+        catch (Exception ex)
+        {
+            LogError("(GetMembersCount) Failed get value in database | " + ex.Message);
+            throw new Exception("Failed get value in database! | " + ex.Message);
+        }
     }
 
     public int GetGangLevel(Gang gang)

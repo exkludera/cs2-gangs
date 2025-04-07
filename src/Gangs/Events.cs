@@ -296,7 +296,7 @@ public partial class Plugin
                                 new(),
                                 reader.GetInt32(3),
                                 reader.GetInt32(4),
-                                GetMembersCount(reader.GetInt32(4))
+                                await GetMembersCount(reader.GetInt32(4))
                             ));
                         }
                     }
