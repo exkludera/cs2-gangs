@@ -13,7 +13,7 @@ namespace Gangs;
 public partial class Plugin : BasePlugin, IPluginConfig<Config>
 {
     public override string ModuleName => "Gangs";
-    public override string ModuleVersion => "0.1.7";
+    public override string ModuleVersion => "0.1.8";
     public override string ModuleAuthor => "Faust, continued by exkludera";
     public static Plugin Instance { get; set; } = new();
 

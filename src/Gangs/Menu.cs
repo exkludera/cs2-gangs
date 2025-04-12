@@ -240,7 +240,7 @@ public static partial class Menu
 
         menu.AddItem(Instance.Localizer["menu<invite>"], (player, option) =>
         {
-            if ((sizeSkill != null && gang.MembersCount >= (Instance.Config.Settings.MaxMembers + sizeSkill.Level)) || gang.MembersCount >= Instance.Config.Settings.MaxMembers)
+            if ((sizeSkill != null && gang.MembersCount >= (Instance.Config.Settings.MaxMembers + sizeSkill.Level)) || (sizeSkill == null && gang.MembersCount >= Instance.Config.Settings.MaxMembers))
             {
                 Instance.PrintToChat(player, Instance.Localizer["chat<invite_full>", gang.MembersCount, Instance.Config.Settings.MaxMembers]);
                 return;
@@ -326,7 +326,7 @@ public static partial class Menu
 
         }, (Instance.NeedExtendGang(gang) ||
             (sizeSkill != null && gang.MembersCount >= (Instance.Config.Settings.MaxMembers + sizeSkill.Level)) ||
-            gang.MembersCount >= Instance.Config.Settings.MaxMembers)
+            (sizeSkill == null && gang.MembersCount >= Instance.Config.Settings.MaxMembers))
             ? DisableOption.DisableShowNumber
             : DisableOption.None);
 
@@ -451,14 +451,16 @@ public static partial class Menu
                                                     new { gId = user.Key });
 
                                                 Server.NextFrame(() => {
-                                                    foreach (var player in Utilities.GetPlayers())
+                                                    foreach (var target in Utilities.GetPlayers())
                                                     {
-                                                        if (Instance.userInfo[player.Slot].DatabaseID == user.Key)
+                                                        if (Instance.userInfo[target.Slot].DatabaseID == user.Key)
                                                         {
-                                                            var steamID = Instance.userInfo[player.Slot].SteamID;
-                                                            Instance.userInfo[player.Slot] = new UserInfo { SteamID = steamID };
-                                                            Instance.PrintToChat(player, Instance.Localizer["chat<kick_message>"]);
-                                                            Instance.AddScoreboardTagToPlayer(player);
+                                                            gang.MembersList.Remove(Instance.userInfo[target.Slot]);
+                                                            gang.MembersCount--;
+                                                            var steamID = Instance.userInfo[target.Slot].SteamID;
+                                                            Instance.userInfo[target.Slot] = new UserInfo { SteamID = steamID };
+                                                            Instance.PrintToChat(target, Instance.Localizer["chat<kick_message>"]);
+                                                            Instance.AddScoreboardTagToPlayer(target);
                                                             break;
                                                         }
                                                     }
